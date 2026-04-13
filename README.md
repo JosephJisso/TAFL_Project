@@ -2,6 +2,9 @@
 
 An interactive web app for Theory of Automata and Formal Languages that converts an NFA into an equivalent DFA using subset construction.
 
+#**Screen-recording**
+https://youtu.be/pN-2pdePZBk
+
 ## About
 
 This project is a single page application built with plain HTML, CSS, and JavaScript.
