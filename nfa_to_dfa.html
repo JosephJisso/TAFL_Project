@@ -1,0 +1,1331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AUTOMATA — NFA→DFA Subset Construction</title>
+<meta name="description" content="Interactive NFA to DFA converter using subset construction. Visualize automata theory step-by-step.">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;700&family=Space+Mono:wght@400;700&family=Bebas+Neue&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --cream:#E9F7EF;--dark:#0a1510;--mid:#13241b;--mid2:#101f18;
+  --accent:#B6E6C9;--accent2:#D4F2DC;--red:#C7EBD4;--teal:#AEE3C2;
+  --mono:'Space Mono',monospace;--sans:'Space Grotesk',sans-serif;--display:'Bebas Neue',cursive;
+}
+html{scroll-behavior:smooth}
+body{background:#030507;color:var(--cream);font-family:var(--sans);overflow-x:hidden;cursor:crosshair;min-height:100vh}
+::selection{background:var(--accent);color:var(--dark)}
+
+@media (prefers-color-scheme: light){
+  :root{
+    --cream:#3a0a12;--dark:#fff4f1;--mid:#ffe4dd;--mid2:#ffd7cf;
+    --accent:#CD1C18;--accent2:#FFA896;--red:#9B1313;--teal:#9B1313;
+  }
+  body{background:#f6ece8}
+}
+
+body.theme-light{
+  --cream:#3a0a12;--dark:#fff4f1;--mid:#ffe4dd;--mid2:#ffd7cf;
+  --accent:#CD1C18;--accent2:#FFA896;--red:#9B1313;--teal:#9B1313;
+  background:#f6ece8;
+}
+body.theme-light nav.scrolled{background:rgba(255,244,241,0.96);border-bottom:1px solid rgba(58,10,18,0.14)}
+body.theme-light .nav-links a{color:rgba(58,10,18,0.86)}
+body.theme-light .nav-links a:hover{color:#3a0a12}
+body.theme-light .hero-coords,
+body.theme-light .hero-sub,
+body.theme-light .hero-desc,
+body.theme-light .scroll-label,
+body.theme-light .hm-label,
+body.theme-light .ch-label,
+body.theme-light .sec-label,
+body.theme-light .reel-tag,
+body.theme-light .reel-body,
+body.theme-light .reel-eq-body,
+body.theme-light .reel-footer,
+body.theme-light .wq-desc,
+body.theme-light .field .hint,
+body.theme-light .alert,
+body.theme-light .foot-copy{color:rgba(58,10,18,0.9)}
+body.theme-light .marquee-item{color:rgba(58,10,18,0.46)}
+body.theme-light .hero-symbol{-webkit-text-stroke:1px rgba(58,10,18,0.3)}
+body.theme-light .scanlines{background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(58,10,18,0.018) 2px,rgba(58,10,18,0.018) 4px)}
+body.theme-light .noise{opacity:.02}
+body.theme-light .progress-bar{box-shadow:0 0 8px rgba(205,28,24,0.4)}
+body.theme-light .app-tab{color:rgba(58,10,18,0.66)}
+body.theme-light .app-tab.active{color:#3a0a12}
+body.theme-light .nav-tag{color:rgba(58,10,18,0.84)}
+body.theme-light .app-layout,
+body.theme-light .app-sidebar,
+body.theme-light .app-tabs,
+body.theme-light .tab-content,
+body.theme-light .graph-wrap,
+body.theme-light .step-card,
+body.theme-light .trans-table th,
+body.theme-light .trans-table td,
+body.theme-light .dfa-tbl th,
+body.theme-light .dfa-tbl td,
+body.theme-light .wq-item,
+body.theme-light .marquee-section,
+body.theme-light footer,
+body.theme-light .chapter .ch-line{border-color:rgba(58,10,18,0.12)}
+
+/* ── CINEMATIC MOVING BACKGROUND ── */
+.bg-cinematic{position:fixed;inset:0;z-index:-5;pointer-events:none;overflow:hidden;background:#020304}
+.bg-video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center 48%;filter:brightness(.64) contrast(1.36) saturate(1.12);transform:scale(1.06);animation:bgVideoDrift 24s ease-in-out infinite alternate;will-change:transform}
+.bg-cinematic::before{content:'';position:absolute;inset:0;z-index:1;background:
+  linear-gradient(180deg,rgba(0,0,0,.08) 0%,rgba(0,0,0,.28) 100%),
+  radial-gradient(100% 60% at 50% 0%,rgba(255,255,255,.14),transparent 65%)}
+.bg-vignette{position:absolute;inset:0;z-index:2;background:radial-gradient(ellipse at center,transparent 36%,rgba(0,0,0,.34) 100%)}
+.bg-film{position:absolute;inset:0;z-index:3;opacity:.045;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.86' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");background-size:300px;animation:bgFilm 1.1s steps(2) infinite}
+
+@keyframes bgVideoDrift{0%{transform:scale(1.06) translate3d(0,0,0)}100%{transform:scale(1.09) translate3d(1.4%,-1.2%,0)}}
+@keyframes bgFilm{0%{transform:translate(0,0)}100%{transform:translate(-8px,-6px)}}
+
+body.theme-light .bg-cinematic{background:#fff4f1}
+body.theme-light .bg-video{filter:brightness(1.42) contrast(.84) saturate(.72)}
+body.theme-light .bg-cinematic::before{background:
+  linear-gradient(180deg,rgba(255,255,255,.56) 0%,rgba(255,255,255,.68) 100%),
+  radial-gradient(100% 60% at 50% 0%,rgba(255,255,255,.55),transparent 65%)}
+body.theme-light .bg-vignette{background:radial-gradient(ellipse at center,transparent 52%,rgba(58,10,18,.08) 100%)}
+body.theme-light .bg-film{opacity:.03}
+
+/* ── CURSOR ── */
+.cursor{position:fixed;width:8px;height:8px;background:var(--cream);border-radius:50%;pointer-events:none;z-index:9999;mix-blend-mode:difference;will-change:transform;left:0;top:0}
+.cursor-ring{position:fixed;width:36px;height:36px;border:1px solid rgba(240,235,224,0.35);border-radius:50%;pointer-events:none;z-index:9998;will-change:transform;left:0;top:0;transition:width .25s,height .25s,border-color .3s}
+
+/* ── OVERLAYS ── */
+.noise{position:fixed;inset:0;z-index:9990;pointer-events:none;opacity:0.04;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");background-size:256px}
+.scanlines{position:fixed;inset:0;z-index:9989;pointer-events:none;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.03) 2px,rgba(0,0,0,0.03) 4px)}
+.progress-bar{position:fixed;top:0;left:0;height:1px;background:linear-gradient(90deg,var(--accent),var(--cream));z-index:9997;width:0;box-shadow:0 0 8px var(--accent)}
+
+/* ── LOADER ── */
+#loader{position:fixed;inset:0;z-index:9999;background:var(--dark);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;transition:opacity .9s cubic-bezier(.4,0,.2,1)}
+.load-title{font-family:var(--display);font-size:clamp(60px,15vw,180px);letter-spacing:.05em;color:var(--cream);opacity:0;animation:fadeUp .8s .5s forwards}
+.load-sub{font-family:var(--mono);font-size:11px;letter-spacing:6px;color:var(--accent);opacity:0;animation:fadeUp .6s 1s forwards}
+.load-bar-wrap{width:200px;height:1px;background:rgba(240,235,224,0.15);overflow:hidden;opacity:0;animation:fadeUp .4s 1.2s forwards}
+.load-bar{height:100%;background:var(--cream);width:0;transition:width 1.8s cubic-bezier(.4,0,.2,1)}
+.load-status{font-family:var(--mono);font-size:10px;letter-spacing:4px;color:rgba(240,235,224,0.4);opacity:0;animation:fadeUp .4s 1.3s forwards}
+.load-pct{font-family:var(--display);font-size:14px;letter-spacing:3px;color:rgba(240,235,224,0.2);opacity:0;animation:fadeUp .3s 1.4s forwards}
+@keyframes fadeUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:none}}
+
+/* ── NAV ── */
+nav{position:fixed;top:0;left:0;right:0;z-index:1000;padding:20px 40px;display:flex;justify-content:space-between;align-items:center;transition:background .4s,backdrop-filter .4s}
+nav.scrolled{background:rgba(10,9,6,0.85);backdrop-filter:blur(20px);border-bottom:1px solid rgba(240,235,224,0.06)}
+.nav-logo{font-family:var(--display);font-size:22px;letter-spacing:3px}
+.nav-links{display:flex;gap:32px}
+.nav-links a{font-family:var(--mono);font-size:10px;letter-spacing:3px;color:rgba(240,235,224,0.5);text-decoration:none;text-transform:uppercase;transition:color .3s;cursor:crosshair}
+.nav-links a:hover{color:var(--cream)}
+.nav-tag{font-family:var(--mono);font-size:10px;color:var(--accent);letter-spacing:2px}
+.nav-actions{display:flex;align-items:center;gap:14px}
+.theme-toggle{background:transparent;border:1px solid rgba(240,235,224,0.25);color:var(--cream);font-family:var(--mono);font-size:10px;letter-spacing:3px;padding:8px 12px;cursor:crosshair;transition:all .25s}
+.theme-toggle:hover{border-color:var(--accent);color:var(--accent2)}
+
+/* ── HERO ── */
+#hero{position:relative;height:100vh;display:flex;flex-direction:column;justify-content:flex-end;padding:60px 40px;overflow:hidden}
+#hero-canvas{position:absolute;inset:0;z-index:1;opacity:.85;pointer-events:none}
+.hero-bg{position:absolute;inset:0;display:grid;place-items:center;overflow:hidden}
+.hero-symbol{font-size:clamp(300px,55vw,700px);font-family:var(--mono);color:transparent;-webkit-text-stroke:1px rgba(240,235,224,0.08);position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);line-height:1;user-select:none;white-space:nowrap;will-change:transform;letter-spacing:-20px}
+.hero-coords{font-family:var(--mono);font-size:10px;letter-spacing:3px;color:rgba(240,235,224,0.3);margin-bottom:16px;z-index:2;position:relative}
+.hero-title{font-family:var(--display);font-size:clamp(72px,14vw,200px);line-height:.88;letter-spacing:.02em;position:relative;z-index:2;will-change:transform}
+.hero-title .line{overflow:hidden;display:block}
+.hero-title .word{display:inline-block;transform:translateY(110%);animation:slideUp .9s cubic-bezier(.16,1,.3,1) forwards}
+.hero-title .word:nth-child(1){animation-delay:0s}
+.accent{color:var(--accent)}
+.hero-sub{font-family:var(--mono);font-size:11px;letter-spacing:4px;color:var(--accent);margin-top:20px;z-index:2;position:relative;opacity:0;animation:fadeUp .8s .6s forwards}
+.hero-desc{position:absolute;right:40px;bottom:60px;max-width:260px;font-size:12px;line-height:1.8;color:rgba(240,235,224,0.4);font-family:var(--mono);z-index:2;opacity:0;animation:fadeUp .8s .9s forwards}
+.hero-meta{position:absolute;right:40px;top:50%;transform:translateY(-50%);z-index:2;display:flex;flex-direction:column;gap:24px;opacity:0;animation:fadeUp .8s 1.2s forwards}
+.hm-item{text-align:right}
+.hm-num{font-family:var(--display);font-size:48px;color:var(--accent);display:block;line-height:1}
+.hm-label{font-family:var(--mono);font-size:9px;letter-spacing:4px;color:rgba(240,235,224,0.3)}
+.scroll-hint{position:absolute;bottom:30px;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:8px;opacity:0;animation:fadeUp 1s 1.5s forwards;z-index:2}
+.scroll-line{width:1px;height:50px;background:linear-gradient(to bottom,var(--cream),transparent);animation:scrollPulse 2s ease-in-out infinite}
+.scroll-label{font-family:var(--mono);font-size:9px;letter-spacing:4px;color:rgba(240,235,224,0.3)}
+@keyframes slideUp{to{transform:translateY(0)}}
+@keyframes scrollPulse{0%,100%{opacity:.3;transform:scaleY(1)}50%{opacity:1;transform:scaleY(1.2)}}
+
+/* ── MARQUEE ── */
+.marquee-section{padding:20px 0;border-top:1px solid rgba(240,235,224,0.08);border-bottom:1px solid rgba(240,235,224,0.08);overflow:hidden;background:rgba(200,168,107,0.04)}
+.marquee-track{display:flex;gap:60px;animation:mq 20s linear infinite;white-space:nowrap}
+.marquee-track.rev{animation-direction:reverse;animation-duration:26s}
+.marquee-track:hover{animation-play-state:paused}
+.marquee-item{font-family:var(--display);font-size:28px;letter-spacing:4px;color:rgba(240,235,224,0.15);flex-shrink:0}
+.marquee-item span{color:var(--accent);margin:0 12px}
+@keyframes mq{to{transform:translateX(-50%)}}
+
+/* ── THEORY PIN-SCROLL REEL ── */
+#theory-reel{position:relative;height:420vh;z-index:1}
+.reel-sticky{position:sticky;top:0;height:100vh;overflow:hidden;display:flex;align-items:center;justify-content:center}
+.reel-panel{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;opacity:0;transform:translateY(20px);transition:opacity .6s cubic-bezier(.16,1,.3,1),transform .6s cubic-bezier(.16,1,.3,1);pointer-events:none}
+.reel-panel.active{opacity:1;transform:none;pointer-events:auto}
+.reel-num{position:absolute;left:48px;top:50%;transform:translateY(-50%);font-family:var(--display);font-size:clamp(100px,20vw,260px);color:rgba(240,235,224,0.03);pointer-events:none;user-select:none}
+.reel-sym{position:absolute;font-size:clamp(200px,45vw,600px);font-family:var(--mono);font-weight:700;color:var(--cream);opacity:0;transform:scale(1.5) rotate(8deg);transition:opacity .7s cubic-bezier(.16,1,.3,1),transform .8s cubic-bezier(.16,1,.3,1),filter .6s;user-select:none;pointer-events:none;will-change:transform;letter-spacing:-10px;filter:blur(20px);z-index:0}
+.reel-sym.reveal{opacity:.12;transform:scale(1) rotate(0deg);filter:blur(0)}
+.reel-sym.exit{opacity:0;transform:scale(.7) rotate(-8deg);filter:blur(15px)}
+.reel-content{position:relative;z-index:3;display:grid;grid-template-columns:1fr 420px;width:100%;max-width:1100px;padding:0 60px;gap:40px;align-items:center}
+.reel-left{display:flex;flex-direction:column;gap:14px}
+.reel-tag{font-family:var(--mono);font-size:10px;letter-spacing:5px;color:var(--accent);opacity:0;transform:translateX(-20px);transition:opacity .6s .1s,transform .6s .1s cubic-bezier(.16,1,.3,1)}
+.reel-title{font-family:var(--display);font-size:clamp(48px,8vw,110px);line-height:.9;opacity:0;transform:translateY(30px);transition:opacity .7s,transform .7s cubic-bezier(.16,1,.3,1)}
+.reel-rule{width:0;height:1px;background:var(--accent);transition:width .7s .2s cubic-bezier(.4,0,.2,1)}
+.reel-body{font-family:var(--mono);font-size:13px;line-height:1.9;color:rgba(240,235,224,0.45);opacity:0;transform:translateY(15px);transition:opacity .6s .25s,transform .6s .25s cubic-bezier(.16,1,.3,1)}
+.reel-right{opacity:0;transform:translateX(25px);transition:opacity .7s .3s,transform .7s .3s cubic-bezier(.16,1,.3,1)}
+.reel-eq{border:1px solid rgba(240,235,224,0.08);padding:28px 24px;position:relative;overflow:hidden;background:rgba(240,235,224,0.02)}
+.reel-eq::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(200,168,107,0.06) 0%,transparent 60%)}
+.reel-eq-label{font-family:var(--mono);font-size:9px;letter-spacing:4px;color:var(--accent);margin-bottom:10px}
+.reel-eq-formula{font-family:var(--display);font-size:24px;letter-spacing:2px;color:var(--cream);line-height:1.6}
+.reel-eq-body{font-family:var(--mono);font-size:11px;line-height:1.9;color:rgba(240,235,224,0.35);margin-top:12px}
+.reel-panel.active .reel-tag,.reel-panel.active .reel-title,.reel-panel.active .reel-body,.reel-panel.active .reel-right{opacity:1;transform:none}
+.reel-panel.active .reel-rule{width:60px}
+.reel-footer{position:absolute;bottom:32px;right:60px;font-family:var(--mono);font-size:9px;letter-spacing:4px;color:rgba(240,235,224,0.2)}
+.reel-progress{position:absolute;right:28px;top:50%;transform:translateY(-50%);display:flex;flex-direction:column;gap:12px;z-index:10}
+.rp-dot{width:8px;height:8px;border-radius:50%;border:1px solid rgba(240,235,224,0.15);transition:all .3s;cursor:crosshair}
+.rp-dot.active{background:var(--accent);border-color:var(--accent);box-shadow:0 0 8px rgba(200,168,107,0.4)}
+.reel-vline{position:absolute;top:0;bottom:0;width:1px;background:rgba(240,235,224,0.05)}
+.reel-vline.left{left:48px}.reel-vline.right{right:48px}
+
+/* ── CHAPTER ── */
+.chapter{display:flex;align-items:center;padding:40px;gap:24px}
+.ch-num{font-family:var(--display);font-size:80px;color:rgba(240,235,224,0.06);line-height:1}
+.ch-line{flex:1;height:1px;background:rgba(240,235,224,0.08)}
+.ch-label{font-family:var(--mono);font-size:10px;letter-spacing:5px;color:rgba(240,235,224,0.3)}
+
+/* ── EQUATION GRID ── */
+/* ── INTERACTIVE TEXT LIST (WorldQuant-style) ── */
+.eq-section{padding:40px 0 60px;position:relative;overflow:hidden}
+.wq-list{display:flex;flex-direction:column;border-top:1px solid rgba(240,235,224,0.06)}
+.wq-item{position:relative;padding:28px 60px;border-bottom:1px solid rgba(240,235,224,0.06);cursor:crosshair;transition:opacity .4s,background .4s;text-align:center}
+.wq-list.has-hover .wq-item{opacity:.12}
+.wq-list.has-hover .wq-item.active{opacity:1;background:rgba(200,168,107,0.02)}
+.wq-title{font-family:var(--display);font-size:clamp(52px,8vw,110px);letter-spacing:4px;color:var(--cream);transition:color .3s;line-height:1}
+.wq-item.active .wq-title{color:var(--accent)}
+.wq-desc{max-height:0;opacity:0;overflow:hidden;transition:max-height .5s cubic-bezier(.4,0,.2,1),opacity .4s .05s,padding .4s;font-family:var(--mono);font-size:13px;line-height:1.8;color:rgba(240,235,224,0.5);text-align:center;max-width:600px;margin:0 auto;padding:0}
+.wq-item.active .wq-desc{max-height:120px;opacity:1;padding:16px 0 4px}
+.wq-num{display:none}
+.wq-sym{display:none}
+
+/* ── TRANSITION ZONE ── */
+#transition-zone{position:relative;height:80vh;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.trans-bg{position:absolute;inset:0;background:radial-gradient(ellipse at center,rgba(200,168,107,0.08) 0%,transparent 70%)}
+.trans-title{font-family:var(--display);font-size:clamp(60px,12vw,160px);text-align:center;line-height:.9;z-index:2;position:relative}
+.glitch{position:relative;display:inline-block}
+.glitch::before,.glitch::after{content:attr(data-text);position:absolute;top:0;left:0;opacity:0}
+.glitch:hover::before{opacity:.7;color:var(--red);clip-path:polygon(0 0,100% 0,100% 35%,0 35%);transform:translate(-3px,0);animation:gl1 .3s steps(1) forwards}
+.glitch:hover::after{opacity:.7;color:#4b8eff;clip-path:polygon(0 65%,100% 65%,100% 100%,0 100%);transform:translate(3px,0);animation:gl2 .3s steps(1) .05s forwards}
+@keyframes gl1{0%,100%{transform:translate(-3px,0)}50%{transform:translate(3px,-2px)}}
+@keyframes gl2{0%,100%{transform:translate(3px,0)}50%{transform:translate(-3px,2px)}}
+.enter-btn{margin-top:32px;display:inline-block;padding:14px 36px;border:1px solid rgba(240,235,224,0.3);font-family:var(--mono);font-size:12px;letter-spacing:4px;color:var(--cream);text-decoration:none;cursor:crosshair;position:relative;overflow:hidden;transition:color .3s;background:transparent}
+.enter-btn::before{content:'';position:absolute;inset:0;background:var(--cream);transform:translateX(-101%);transition:transform .4s cubic-bezier(.16,1,.3,1)}
+.enter-btn:hover{color:var(--dark)}.enter-btn:hover::before{transform:translateX(0)}
+
+/* ── APP ── */
+.app-entry{padding:80px 48px 0;border-top:1px solid rgba(240,235,224,0.1);position:relative}
+.app-entry::before{content:'_EXECUTE_CONVERSION';position:absolute;top:28px;left:48px;font-family:var(--mono);font-size:12px;letter-spacing:5px;color:rgba(200,168,107,0.5)}
+#app{padding:0 48px 100px;min-height:100vh;position:relative}
+.app-layout{display:grid;grid-template-columns:420px 1fr;gap:0;border:1px solid rgba(240,235,224,0.12);background:linear-gradient(135deg,rgba(200,168,107,0.08),rgba(10,9,6,0.6));box-shadow:0 30px 80px rgba(0,0,0,0.55),0 0 0 1px rgba(200,168,107,0.12) inset;align-items:stretch}
+.app-layout::before{content:'';position:absolute;inset:0;border:1px solid rgba(200,168,107,0.18);pointer-events:none;mix-blend-mode:screen}
+.app-sidebar{background:linear-gradient(180deg,rgba(10,9,6,0.95),rgba(18,16,11,0.92));border-right:1px solid rgba(240,235,224,0.12);padding:42px 38px;display:flex;flex-direction:column;gap:28px;height:100%;overflow-y:auto;position:relative}
+.app-sidebar::after{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--accent),transparent)}
+.app-main{background:radial-gradient(120% 120% at 10% 0%,rgba(200,168,107,0.12),transparent 55%),var(--mid2);display:flex;flex-direction:column}
+.app-heading{font-family:var(--display);font-size:clamp(64px,8vw,110px);letter-spacing:6px;line-height:.8;text-transform:uppercase;text-shadow:0 10px 40px rgba(0,0,0,0.5)}
+.app-sub{font-family:var(--mono);font-size:12px;letter-spacing:6px;color:var(--accent2);margin-top:8px}
+.field{margin-bottom:20px}
+.field label{display:block;font-family:var(--display);font-size:16px;letter-spacing:6px;color:rgba(240,235,224,0.65);margin-bottom:12px}
+.field input,.field select{width:100%;background:rgba(240,235,224,0.03);border:1px solid rgba(240,235,224,0.18);padding:16px 18px;color:var(--cream);font-family:var(--mono);font-size:16px;font-weight:700;outline:none;transition:border-color .3s,background .3s,box-shadow .3s;cursor:crosshair;letter-spacing:1.6px;box-shadow:0 0 0 1px rgba(200,168,107,0.05) inset}
+.field input:focus,.field select:focus{border-color:var(--accent);background:rgba(200,168,107,0.08);box-shadow:0 0 0 2px rgba(200,168,107,0.15),0 6px 20px rgba(0,0,0,0.35)}
+.field .hint{font-size:12px;color:rgba(240,235,224,0.3);margin-top:8px;font-family:var(--mono);letter-spacing:1px}
+.sec-label{font-family:var(--display);font-size:16px;letter-spacing:7px;color:rgba(240,235,224,0.5);margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid rgba(240,235,224,0.08);position:relative}
+.sec-label::after{content:'';position:absolute;left:0;bottom:-1px;width:36px;height:2px;background:var(--accent)}
+.trans-table{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:15px}
+.trans-table th{background:rgba(240,235,224,0.05);color:rgba(240,235,224,0.5);font-weight:700;padding:12px 14px;text-align:center;border:1px solid rgba(240,235,224,0.08);letter-spacing:3px;font-family:var(--display);font-size:16px}
+.trans-table td{border:1px solid rgba(240,235,224,0.08);padding:0}
+.trans-table td input{width:100%;background:transparent;border:none;padding:12px 14px;color:var(--cream);font-family:var(--mono);font-size:15px;font-weight:700;text-align:center;outline:none;cursor:crosshair;letter-spacing:1.5px}
+.trans-table td input:focus{background:rgba(200,168,107,0.06)}
+.trans-table td.state-cell{padding:12px 14px;color:var(--accent);text-align:center;font-weight:700;font-size:15px}
+.preset-btn{background:rgba(240,235,224,0.02);border:1px solid rgba(240,235,224,0.14);padding:18px 20px;cursor:crosshair;font-family:var(--mono);color:rgba(240,235,224,0.55);text-align:left;transition:all .25s;width:100%;font-size:13px;line-height:1.6;position:relative;overflow:hidden}
+.preset-btn::before{content:'';position:absolute;left:0;top:0;bottom:0;width:2px;background:var(--accent);opacity:0;transition:opacity .2s}
+.preset-btn:hover{background:rgba(200,168,107,0.1);border-color:rgba(200,168,107,0.45);color:var(--cream);transform:translateY(-1px)}
+.preset-btn:hover::before{opacity:1}
+.preset-btn strong{display:block;color:var(--cream);margin-bottom:6px;font-family:var(--display);font-size:18px;letter-spacing:3px}
+.btn{display:inline-flex;align-items:center;gap:10px;padding:16px 28px;font-family:var(--display);font-size:14px;letter-spacing:4px;cursor:crosshair;border:none;transition:all .25s cubic-bezier(.4,0,.2,1);position:relative;overflow:hidden;font-weight:700;text-transform:uppercase}
+.btn-primary{background:linear-gradient(135deg,var(--cream),var(--accent2));color:var(--dark);box-shadow:0 12px 28px rgba(200,168,107,0.25),0 0 0 1px rgba(240,235,224,0.2) inset}
+.btn-primary:hover{background:linear-gradient(135deg,var(--accent2),var(--accent));transform:translateY(-2px);box-shadow:0 14px 34px rgba(200,168,107,0.35)}
+.btn-ghost{background:transparent;color:var(--cream);border:1px solid rgba(240,235,224,0.3)}
+.btn-ghost:hover{background:rgba(240,235,224,0.06);border-color:rgba(240,235,224,0.6)}
+.btn-sm{padding:12px 20px;font-size:12px}
+.btn-row{display:flex;gap:10px;flex-wrap:wrap}
+.app-tabs{display:flex;border-bottom:1px solid rgba(240,235,224,0.12);overflow-x:auto;background:rgba(10,9,6,0.55)}
+.app-tab{padding:18px 24px;font-family:var(--display);font-size:16px;letter-spacing:4px;cursor:crosshair;color:rgba(240,235,224,0.35);border-bottom:3px solid transparent;transition:all .2s;margin-bottom:-1px;white-space:nowrap;flex-shrink:0}
+.app-tab:hover{color:rgba(240,235,224,0.75)}
+.app-tab.active{color:var(--cream);border-bottom-color:var(--accent);text-shadow:0 0 12px rgba(200,168,107,0.35)}
+.tab-content{display:none;flex:1;padding:36px;overflow:auto;animation:tabIn .35s ease;background:linear-gradient(180deg,rgba(18,16,11,0.9),rgba(18,16,11,0.98))}
+.tab-content.active{display:flex;flex-direction:column;gap:24px}
+@keyframes tabIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.graph-wrap{border:1px solid rgba(240,235,224,0.12);background:radial-gradient(circle at 20% 0%,rgba(200,168,107,0.08),transparent 60%),rgba(240,235,224,0.02);min-height:400px;position:relative}
+svg.automata{width:100%;min-height:400px}
+.step-card{border:1px solid rgba(240,235,224,0.08);padding:28px;margin-bottom:12px;position:relative;transition:background .2s}
+.step-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--accent)}
+.step-card:hover{background:rgba(240,235,224,0.02)}
+.step-num{font-family:var(--display);font-size:20px;letter-spacing:6px;color:var(--accent);margin-bottom:14px}
+.dfa-tbl{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:16px;font-weight:700}
+.dfa-tbl th{background:rgba(240,235,224,0.05);color:rgba(240,235,224,0.5);font-weight:700;padding:14px 18px;border:1px solid rgba(240,235,224,0.08);letter-spacing:4px;font-size:14px;font-family:var(--display)}
+.dfa-tbl td{border:1px solid rgba(240,235,224,0.06);padding:14px 18px}
+.dfa-tbl tr:hover td{background:rgba(240,235,224,0.03)}
+.dfa-tbl .acc{color:var(--accent);font-weight:700}.dfa-tbl .dead{color:var(--red);font-weight:700}
+.badge{display:inline-block;padding:5px 16px;font-family:var(--mono);font-size:12px;letter-spacing:2px;border:1px solid;font-weight:700}
+.badge-ok{color:var(--teal);border-color:rgba(91,200,175,0.3);background:rgba(91,200,175,0.06)}
+.badge-err{color:var(--red);border-color:rgba(200,75,60,0.3);background:rgba(200,75,60,0.06)}
+.badge-info{color:var(--accent);border-color:rgba(200,168,107,0.3);background:rgba(200,168,107,0.06)}
+.alert{padding:16px 20px;border-left:3px solid var(--accent);font-family:var(--mono);font-size:14px;font-weight:700;color:rgba(240,235,224,0.6);background:rgba(200,168,107,0.04);line-height:1.6}
+.alert.err{border-color:var(--red);color:rgba(200,75,60,0.8);background:rgba(200,75,60,0.04)}
+.empty{text-align:center;padding:80px;color:rgba(240,235,224,0.25);font-family:var(--display);font-size:22px;letter-spacing:5px}
+.export-row{display:flex;gap:10px;margin-top:14px}
+.divider{height:1px;background:rgba(240,235,224,0.06)}
+
+/* ── FOOTER ── */
+footer{padding:40px;border-top:1px solid rgba(240,235,224,0.06);display:flex;justify-content:space-between;align-items:center}
+.foot-logo{font-family:var(--display);font-size:20px;letter-spacing:4px;color:rgba(240,235,224,0.2)}
+.foot-copy{font-family:var(--mono);font-size:10px;letter-spacing:3px;color:rgba(240,235,224,0.15)}
+
+/* ── RESPONSIVE ── */
+@media(max-width:768px){
+  .app-layout{grid-template-columns:1fr}
+  .eq-grid{grid-template-columns:1fr}
+  nav .nav-links{display:none}
+  .hero-desc,.hero-meta{display:none}
+  #app{padding:0 16px 40px}
+  .app-entry{padding:40px 16px 0}
+  .app-layout{grid-template-columns:1fr}
+  .app-sidebar{max-height:none;padding:28px 20px}
+  .reel-content{grid-template-columns:1fr;padding:0 24px}
+  .reel-right{display:none}
+  .reel-progress{display:none}
+  footer{flex-direction:column;gap:8px;padding:24px 16px}
+}
+</style>
+</head>
+<body>
+
+<div class="bg-cinematic" aria-hidden="true">
+  <video class="bg-video" id="bg-video" autoplay muted loop playsinline preload="auto" aria-hidden="true">
+    <source src="18327-291012897_medium.mp4" type="video/mp4">
+  </video>
+  <div class="bg-vignette"></div>
+  <div class="bg-film"></div>
+</div>
+
+<!-- OVERLAYS -->
+<div class="cursor" id="cursor"></div>
+<div class="cursor-ring" id="cursor-ring"></div>
+<div class="noise"></div>
+<div class="scanlines"></div>
+<div class="progress-bar" id="progress"></div>
+
+<!-- LOADER -->
+<div id="loader">
+  <div class="load-title">AUTOMATA</div>
+  <div class="load-sub">NFA → DFA CONVERSION ENGINE</div>
+  <div class="load-bar-wrap"><div class="load-bar" id="load-bar"></div></div>
+  <div class="load-status" id="load-status">INITIALISING SUBSET CONSTRUCTION...</div>
+  <div class="load-pct" id="load-pct">0%</div>
+</div>
+
+<!-- NAV -->
+<nav id="nav">
+  <div class="nav-logo">AUTOMATA</div>
+  <div class="nav-links">
+    <a href="#hero">HOME</a>
+    <a href="#theory-reel">THEORY</a>
+    <a href="#eq-section">CONCEPTS</a>
+    <a href="#app">CONVERTER</a>
+  </div>
+  <div class="nav-actions">
+    <button class="theme-toggle" id="theme-toggle" type="button" aria-label="Toggle theme">LIGHT</button>
+    <div class="nav-tag">&gt;_ Joseph Jisso Aliyath</div>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section id="hero">
+  <canvas id="hero-canvas"></canvas>
+  <div class="hero-bg">
+    <div class="hero-symbol" id="heroSym">δ</div>
+  </div>
+  <div class="hero-coords">&gt;_ FORMAL LANGUAGE THEORY — <span id="hero-clock">00:00:00</span></div>
+  <h1 class="hero-title" id="hero-title">
+    <span class="line"><span class="word">NON</span></span>
+    <span class="line"><span class="word" style="animation-delay:.08s">DETERMIN</span></span>
+    <span class="line"><span class="word accent" style="animation-delay:.16s">ISTIC.</span></span>
+  </h1>
+  <div class="hero-sub">&gt;_ AUTOMATA THEORY — SUBSET CONSTRUCTION — FORMAL LANGUAGES</div>
+  <div class="scroll-hint"><span class="scroll-label">SCROLL</span><div class="scroll-line"></div></div>
+</section>
+
+<!-- MARQUEE 1 -->
+<div class="marquee-section">
+  <div class="marquee-track" id="mq1">
+    <span class="marquee-item">STATES<span>·</span></span><span class="marquee-item">ALPHABET<span>·</span></span><span class="marquee-item">TRANSITIONS<span>·</span></span><span class="marquee-item">δ FUNCTION<span>·</span></span><span class="marquee-item">SUBSET CONSTRUCTION<span>·</span></span><span class="marquee-item">ε-CLOSURE<span>·</span></span><span class="marquee-item">ACCEPT STATES<span>·</span></span><span class="marquee-item">DEAD STATES<span>·</span></span><span class="marquee-item">STATES<span>·</span></span><span class="marquee-item">ALPHABET<span>·</span></span><span class="marquee-item">TRANSITIONS<span>·</span></span><span class="marquee-item">δ FUNCTION<span>·</span></span><span class="marquee-item">SUBSET CONSTRUCTION<span>·</span></span><span class="marquee-item">ε-CLOSURE<span>·</span></span>
+  </div>
+</div>
+
+<!-- THEORY PIN-SCROLL REEL — 6 PANELS -->
+<section id="theory-reel">
+  <div class="reel-sticky" id="reel-sticky">
+    <div class="reel-vline left"></div>
+    <div class="reel-vline right"></div>
+    <div class="reel-progress" id="reel-progress">
+      <div class="rp-dot active" data-idx="0"></div>
+      <div class="rp-dot" data-idx="1"></div>
+      <div class="rp-dot" data-idx="2"></div>
+      <div class="rp-dot" data-idx="3"></div>
+      <div class="rp-dot" data-idx="4"></div>
+      <div class="rp-dot" data-idx="5"></div>
+    </div>
+
+    <!-- Panel 1: NFA Definition -->
+    <div class="reel-panel active" id="rp-0">
+      <div class="reel-num">01</div>
+      <div class="reel-sym" id="rsym-0">N</div>
+      <div class="reel-content">
+        <div class="reel-left">
+          <div class="reel-tag">&gt;_ 01 — FINITE AUTOMATA</div>
+          <h2 class="reel-title">THE NFA<br>DEFINED.</h2>
+          <div class="reel-rule"></div>
+          <p class="reel-body">A 5-tuple (Q, Σ, δ, q₀, F). States. Alphabet. A transition function that maps to a <em>set</em> of states. Multiple paths. Infinite possibility. One input — many fates.</p>
+        </div>
+        <div class="reel-right">
+          <div class="reel-eq">
+            <div class="reel-eq-label">FORMAL DEFINITION</div>
+            <div class="reel-eq-formula">M = (Q, Σ, δ, q₀, F)</div>
+            <div class="reel-eq-body">Q — finite set of states<br>Σ — finite input alphabet<br>δ — transition function<br>q₀ — start state ∈ Q<br>F — accept states ⊆ Q</div>
+          </div>
+        </div>
+      </div>
+      <div class="reel-footer">01 / 06</div>
+    </div>
+
+    <!-- Panel 2: Transition Function -->
+    <div class="reel-panel" id="rp-1">
+      <div class="reel-num">02</div>
+      <div class="reel-sym" id="rsym-1" style="color:var(--accent)">δ</div>
+      <div class="reel-content">
+        <div class="reel-left">
+          <div class="reel-tag">&gt;_ 02 — TRANSITION FUNCTION</div>
+          <h2 class="reel-title">δ : Q × Σ<br>→ 2<sup style="font-size:.45em">Q</sup></h2>
+          <div class="reel-rule"></div>
+          <p class="reel-body">The NFA transition function maps each state-symbol pair to a <em>power set</em> of states. Every subset becomes a new DFA state. This is the insight that makes conversion possible.</p>
+        </div>
+        <div class="reel-right">
+          <div class="reel-eq">
+            <div class="reel-eq-label">NFA vs DFA DELTA</div>
+            <div class="reel-eq-formula">NFA: δ(q,a) → 2<sup>Q</sup><br>DFA: δ(q,a) → Q</div>
+            <div class="reel-eq-body">The NFA allows transitions to any subset of states. The DFA requires exactly one destination. Subset construction bridges this gap.</div>
+          </div>
+        </div>
+      </div>
+      <div class="reel-footer">02 / 06</div>
+    </div>
+
+    <!-- Panel 3: Epsilon Closure -->
+    <div class="reel-panel" id="rp-2">
+      <div class="reel-num">03</div>
+      <div class="reel-sym" id="rsym-2" style="color:var(--red)">ε</div>
+      <div class="reel-content">
+        <div class="reel-left">
+          <div class="reel-tag">&gt;_ 03 — EPSILON CLOSURE</div>
+          <h2 class="reel-title">THE SILENT<br>MOVE.</h2>
+          <div class="reel-rule"></div>
+          <p class="reel-body">ε-transitions consume no input symbol. The ε-closure of a state is all states reachable via ε alone. Before each DFA move, we compute this closure — it's the foundation of correct conversion.</p>
+        </div>
+        <div class="reel-right">
+          <div class="reel-eq">
+            <div class="reel-eq-label">ε-CLOSURE ALGORITHM</div>
+            <div class="reel-eq-formula">ε-closure(q) =<br>{q} ∪ ε-closure(δ(q,ε))</div>
+            <div class="reel-eq-body">Recursively follow all ε-edges. The resulting set forms the basis for DFA start state computation. Without this, the construction is incomplete.</div>
+          </div>
+        </div>
+      </div>
+      <div class="reel-footer">03 / 06</div>
+    </div>
+
+    <!-- Panel 4: Subset Construction -->
+    <div class="reel-panel" id="rp-3">
+      <div class="reel-num">04</div>
+      <div class="reel-sym" id="rsym-3" style="font-size:clamp(180px,40vw,500px)">2<sup style="font-size:.4em">Q</sup></div>
+      <div class="reel-content">
+        <div class="reel-left">
+          <div class="reel-tag">&gt;_ 04 — SUBSET CONSTRUCTION</div>
+          <h2 class="reel-title">POWERSET<br>METHOD.</h2>
+          <div class="reel-rule"></div>
+          <p class="reel-body">Each DFA state is a <em>set of NFA states</em>. If the NFA has n states, the DFA has at most 2ⁿ states. Start from ε-closure(q₀). For each new state and symbol, compute transitions. Repeat until stable.</p>
+        </div>
+        <div class="reel-right">
+          <div class="reel-eq">
+            <div class="reel-eq-label">CONSTRUCTION STEPS</div>
+            <div class="reel-eq-body" style="font-size:11px;line-height:2.1">1. Start: ε-closure({q₀})<br>2. For each DFA state S, symbol a:<br>&nbsp;&nbsp;&nbsp;move(S,a) = ∪ δ(q,a) ∀q∈S<br>3. New state = ε-closure(move(S,a))<br>4. Mark accepting if S∩F ≠ ∅<br>5. Repeat until no new states</div>
+          </div>
+        </div>
+      </div>
+      <div class="reel-footer">04 / 06</div>
+    </div>
+
+    <!-- Panel 5: Language Equivalence — NEW -->
+    <div class="reel-panel" id="rp-4">
+      <div class="reel-num">05</div>
+      <div class="reel-sym" id="rsym-4" style="color:var(--teal)">≡</div>
+      <div class="reel-content">
+        <div class="reel-left">
+          <div class="reel-tag">&gt;_ 05 — EQUIVALENCE THEOREM</div>
+          <h2 class="reel-title">LANGUAGE<br>EQUIVALENCE.</h2>
+          <div class="reel-rule"></div>
+          <p class="reel-body">The DFA produced by subset construction recognises <em>exactly</em> the same language as the original NFA. L(NFA) = L(DFA). Determinism costs states — <em>never</em> expressiveness. This is the Rabin-Scott theorem (1959).</p>
+        </div>
+        <div class="reel-right">
+          <div class="reel-eq">
+            <div class="reel-eq-label">RABIN-SCOTT THEOREM</div>
+            <div class="reel-eq-formula">L(NFA) = L(DFA)</div>
+            <div class="reel-eq-body">For every NFA N, there exists a DFA D such that L(N) = L(D). Proved by Michael Rabin and Dana Scott in 1959, earning them the Turing Award. The subset construction is the constructive proof.</div>
+          </div>
+        </div>
+      </div>
+      <div class="reel-footer">05 / 06</div>
+    </div>
+
+    <!-- Panel 6: Closure Properties — NEW -->
+    <div class="reel-panel" id="rp-5">
+      <div class="reel-num">06</div>
+      <div class="reel-sym" id="rsym-5">∪</div>
+      <div class="reel-content">
+        <div class="reel-left">
+          <div class="reel-tag">&gt;_ 06 — REGULAR LANGUAGES</div>
+          <h2 class="reel-title">CLOSURE<br>PROPERTIES.</h2>
+          <div class="reel-rule"></div>
+          <p class="reel-body">Regular languages are closed under union, concatenation, Kleene star, complement, and intersection. The ability to convert NFA→DFA is what makes complementation and intersection decidable. DFAs make proofs <em>constructive</em>.</p>
+        </div>
+        <div class="reel-right">
+          <div class="reel-eq">
+            <div class="reel-eq-label">CLOSURE OPERATIONS</div>
+            <div class="reel-eq-body" style="font-size:11px;line-height:2.2">L₁ ∪ L₂ — Union<br>L₁ · L₂ — Concatenation<br>L* — Kleene Star<br>L̄ — Complement (needs DFA)<br>L₁ ∩ L₂ — Intersection<br>All preserve regularity.</div>
+          </div>
+        </div>
+      </div>
+      <div class="reel-footer">06 / 06</div>
+    </div>
+
+  </div>
+</section>
+
+<!-- MARQUEE 2 -->
+<div class="marquee-section">
+  <div class="marquee-track rev" id="mq2">
+    <span class="marquee-item">δ(Q,Σ) → 2<sup>Q</sup><span>·</span></span><span class="marquee-item">ε-CLOSURE(q₀)<span>·</span></span><span class="marquee-item">MOVE(S,a) = ∪δ(q,a)<span>·</span></span><span class="marquee-item">|DFA| ≤ 2<sup>|NFA|</sup><span>·</span></span><span class="marquee-item">L(NFA) = L(DFA)<span>·</span></span><span class="marquee-item">RABIN-SCOTT 1959<span>·</span></span><span class="marquee-item">δ(Q,Σ) → 2<sup>Q</sup><span>·</span></span><span class="marquee-item">ε-CLOSURE(q₀)<span>·</span></span><span class="marquee-item">MOVE(S,a) = ∪δ(q,a)<span>·</span></span><span class="marquee-item">|DFA| ≤ 2<sup>|NFA|</sup><span>·</span></span><span class="marquee-item">L(NFA) = L(DFA)<span>·</span></span><span class="marquee-item">RABIN-SCOTT 1959<span>·</span></span>
+  </div>
+</div>
+
+<!-- EQUATION GRID -->
+<div class="chapter">
+  <div class="ch-num">07</div><div class="ch-line"></div><div class="ch-label">CORE CONCEPTS</div><div class="ch-line"></div>
+</div>
+<section class="eq-section" id="eq-section">
+  <div class="wq-list" id="wq-list">
+    <div class="wq-item" data-idx="0">
+      <div class="wq-num">01</div>
+      <div class="wq-title">STATE SET</div>
+      <div class="wq-sym">Q</div>
+      <div class="wq-desc">A finite, non-empty set of states Q = {q₀, q₁, ..., qₙ}. Each state represents a configuration of the machine at a given moment in processing.</div>
+    </div>
+    <div class="wq-item" data-idx="1">
+      <div class="wq-num">02</div>
+      <div class="wq-title">ALPHABET</div>
+      <div class="wq-sym">Σ</div>
+      <div class="wq-desc">A finite set of input symbols. The machine reads one symbol at a time from left to right. Only symbols in Σ are valid input — all else is undefined.</div>
+    </div>
+    <div class="wq-item" data-idx="2">
+      <div class="wq-num">03</div>
+      <div class="wq-title">TRANSITION FUNCTION</div>
+      <div class="wq-sym">δ</div>
+      <div class="wq-desc">Maps each state-symbol pair to a set of states. In an NFA, δ: Q × Σ → 2ᵐ. In a DFA, δ: Q × Σ → Q. The bridge between them is subset construction.</div>
+    </div>
+    <div class="wq-item" data-idx="3">
+      <div class="wq-num">04</div>
+      <div class="wq-title">DEAD STATE</div>
+      <div class="wq-sym">∅</div>
+      <div class="wq-desc">The empty set ∅ is a trap — the DFA dead state. Once entered, no path leads to acceptance. All transitions from ∅ loop back to ∅. Rejection is certain.</div>
+    </div>
+    <div class="wq-item" data-idx="4">
+      <div class="wq-num">05</div>
+      <div class="wq-title">ACCEPT STATES</div>
+      <div class="wq-sym">F</div>
+      <div class="wq-desc">F ⊆ Q. A DFA state built from a subset is accepting iff that subset contains at least one NFA accepting state. Acceptance is preserved across conversion.</div>
+    </div>
+    <div class="wq-item" data-idx="5">
+      <div class="wq-num">06</div>
+      <div class="wq-title">ε-CLOSURE</div>
+      <div class="wq-sym">ε</div>
+      <div class="wq-desc">The set of all states reachable from a given state by following only ε-transitions. Computed recursively; foundational to correct NFA→DFA conversion.</div>
+    </div>
+  </div>
+</section>
+
+<!-- TRANSITION ZONE -->
+<section id="transition-zone">
+  <div class="trans-bg"></div>
+  <div style="text-align:center;z-index:2;position:relative">
+    <div style="font-family:var(--mono);font-size:10px;letter-spacing:6px;color:var(--accent);margin-bottom:20px">&gt;_ READY TO CONVERT</div>
+    <div class="trans-title">
+      <div class="glitch" data-text="EXECUTE">EXECUTE</div>
+      <div class="glitch" data-text="CONVERSION" style="color:var(--accent)">CONVERSION</div>
+    </div>
+    <a href="#app" class="enter-btn">BEGIN CONSTRUCTION →</a>
+  </div>
+</section>
+
+<!-- APP -->
+<div class="app-entry"></div>
+<section id="app">
+  <div style="padding:48px 0 28px">
+    <div class="app-heading">NFA → DFA</div>
+    <div class="app-sub">&gt;_ SUBSET CONSTRUCTION ENGINE — INTERACTIVE CONVERTER</div>
+  </div>
+  <div class="app-layout">
+    <!-- SIDEBAR -->
+    <div class="app-sidebar">
+      <div>
+        <div class="sec-label">PRESETS</div>
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <button class="preset-btn" onclick="loadPreset(0)"><strong>01 — QUESTION MATCH (A,B,C)</strong>Matches your handwritten NFA in the screenshot</button>
+          <button class="preset-btn" onclick="loadPreset(1)"><strong>02 — ENDS WITH 'ab'</strong>Strings over {a,b} ending in "ab"</button>
+          <button class="preset-btn" onclick="loadPreset(2)"><strong>03 — CONTAINS 'aa'</strong>Strings over {a,b} containing "aa"</button>
+          <button class="preset-btn" onclick="loadPreset(3)"><strong>04 — ε-NFA DEMO</strong>3-state epsilon NFA</button>
+          <button class="preset-btn" onclick="loadPreset(4)"><strong>05 — EVEN NUMBER OF a's</strong>Counts parity of 'a' symbols</button>
+          <button class="preset-btn" onclick="loadPreset(5)"><strong>06 — STARTS 'a' ENDS 'b'</strong>Strings starting with a, ending with b</button>
+        </div>
+      </div>
+      <div style="border-top:1px solid rgba(240,235,224,0.06);padding-top:20px">
+        <div class="sec-label">DEFINE NFA</div>
+        <div class="field"><label>STATES</label><input id="inp-states" value="q0, q1, q2"></div>
+        <div class="field"><label>ALPHABET</label><input id="inp-alpha" value="a, b"><div class="hint">use ε for epsilon transitions</div></div>
+        <div class="field"><label>START STATE</label><select id="inp-start"></select></div>
+        <div class="field"><label>ACCEPT STATES</label><input id="inp-accept" value="q2"></div>
+        <button class="btn btn-ghost btn-sm" onclick="buildTransitionTable()">↻ BUILD TABLE</button>
+      </div>
+      <div style="border-top:1px solid rgba(240,235,224,0.06);padding-top:20px">
+        <div class="sec-label">TRANSITION FUNCTION δ</div>
+        <div id="trans-table-container"><div class="alert">Define states and alphabet, then build table</div></div>
+        <div style="margin-top:8px;font-size:10px;color:rgba(240,235,224,0.2);font-family:var(--mono)">comma-separated states or ∅</div>
+      </div>
+      <div class="btn-row" style="padding-top:4px">
+        <button class="btn btn-primary" style="flex:1" onclick="runConversion()">▶ CONVERT</button>
+        <button class="btn btn-ghost" onclick="resetAll()">✕</button>
+      </div>
+    </div>
+
+    <!-- MAIN -->
+    <div class="app-main">
+      <div class="app-tabs">
+        <div class="app-tab active" onclick="showTab('t-nfa',this)">NFA GRAPH</div>
+        <div class="app-tab" onclick="showTab('t-steps',this)">STEPS</div>
+        <div class="app-tab" onclick="showTab('t-dfa',this)">DFA GRAPH</div>
+        <div class="app-tab" onclick="showTab('t-table',this)">TABLE</div>
+        <div class="app-tab" onclick="showTab('t-test',this)">TEST</div>
+        <div class="app-tab" onclick="showTab('t-eclosure',this)">ε-CLOSURE</div>
+        <div class="app-tab" onclick="showTab('t-minimize',this)">MINIMIZE</div>
+      </div>
+
+      <div class="tab-content active" id="t-nfa">
+        <div id="nfa-alert" class="alert">Load a preset or define your NFA and click CONVERT</div>
+        <div class="graph-wrap"><svg class="automata" id="svg-nfa"></svg></div>
+      </div>
+      <div class="tab-content" id="t-steps">
+        <div id="steps-out"><div class="empty">RUN CONVERSION TO SEE STEPS</div></div>
+      </div>
+      <div class="tab-content" id="t-dfa">
+        <div id="dfa-alert" class="alert">DFA will appear after conversion</div>
+        <div class="graph-wrap"><svg class="automata" id="svg-dfa"></svg></div>
+      </div>
+      <div class="tab-content" id="t-table">
+        <div id="table-out"><div class="empty">DFA TABLE WILL APPEAR HERE</div></div>
+        <div class="export-row" id="export-row" style="display:none">
+          <button class="btn btn-ghost btn-sm" onclick="copyTable()">📋 COPY TABLE</button>
+          <button class="btn btn-ghost btn-sm" onclick="exportSVG('svg-dfa')">↓ EXPORT DFA SVG</button>
+          <button class="btn btn-ghost btn-sm" onclick="exportSVG('svg-nfa')">↓ EXPORT NFA SVG</button>
+        </div>
+      </div>
+      <div class="tab-content" id="t-test">
+        <div class="field" style="max-width:400px"><label>INPUT STRING</label><input id="inp-test" placeholder="e.g. aab" style="font-size:18px;letter-spacing:4px"></div>
+        <div class="btn-row">
+          <button class="btn btn-primary btn-sm" onclick="runTest()">▶ RUN</button>
+          <button class="btn btn-ghost btn-sm" onclick="stepTest()">→ STEP</button>
+          <button class="btn btn-ghost btn-sm" onclick="resetTest()">↺ RESET</button>
+        </div>
+        <div id="test-out"></div>
+        <div class="graph-wrap" style="min-height:280px"><svg class="automata" id="svg-test"></svg></div>
+      </div>
+      <div class="tab-content" id="t-eclosure">
+        <div id="eclosure-out"><div class="empty">CONVERT AN NFA WITH ε-TRANSITIONS TO SEE ε-CLOSURE</div></div>
+      </div>
+      <div class="tab-content" id="t-minimize">
+        <div id="minimize-out"><div class="empty">CONVERT FIRST, THEN MINIMIZE THE DFA</div></div>
+        <div class="graph-wrap" style="display:none" id="min-graph-wrap"><svg class="automata" id="svg-min"></svg></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="foot-logo">AUTOMATA</div>
+  <div class="foot-copy">FORMAL LANGUAGE THEORY — NFA→DFA — SUBSET CONSTRUCTION — RABIN-SCOTT 1959</div>
+</footer>
+
+<script>
+// ═══════ CURSOR ═══════
+const cur=document.getElementById('cursor'),ring=document.getElementById('cursor-ring');
+let mx=0,my=0,rx=0,ry=0;
+document.addEventListener('mousemove',e=>{mx=e.clientX;my=e.clientY;cur.style.transform=`translate(${mx-4}px,${my-4}px)`},{passive:true});
+(function animRing(){rx+=(mx-rx)*.09;ry+=(my-ry)*.09;ring.style.transform=`translate(${rx-18}px,${ry-18}px)`;requestAnimationFrame(animRing)})();
+document.querySelectorAll('a,button,.preset-btn,.app-tab,.enter-btn,.eq-card').forEach(el=>{
+  el.addEventListener('mouseenter',()=>{ring.style.width='52px';ring.style.height='52px';ring.style.borderColor='rgba(200,168,107,.5)'});
+  el.addEventListener('mouseleave',()=>{ring.style.width='36px';ring.style.height='36px';ring.style.borderColor='rgba(240,235,224,.35)'});
+});
+
+// ═══════ 3D DOT SPHERE (WorldQuant-style) ═══════
+const cv=document.getElementById('hero-canvas'),ctx=cv.getContext('2d');
+let W,H;function resizeCv(){W=cv.width=window.innerWidth;H=cv.height=window.innerHeight}
+resizeCv();window.addEventListener('resize',resizeCv);
+
+// Sphere parameters
+const NUM_DOTS=1400;
+const SPHERE_RADIUS=Math.min(window.innerWidth,window.innerHeight)*.32;
+const PERSPECTIVE=800;
+let rotY=0,rotX=.3;
+let targetRotY=0,targetRotX=.3;
+
+// Generate points on sphere using fibonacci spiral — even distribution
+const spherePts=[];
+const PHI=(1+Math.sqrt(5))/2;
+for(let i=0;i<NUM_DOTS;i++){
+  const y=1-(i/(NUM_DOTS-1))*2; // -1 to 1
+  const radiusAtY=Math.sqrt(1-y*y);
+  const theta=2*Math.PI*i/PHI;
+  spherePts.push({
+    ox:Math.cos(theta)*radiusAtY,
+    oy:y,
+    oz:Math.sin(theta)*radiusAtY,
+    dx:0,dy:0,dz:0 // displacement from mouse
+  });
+}
+
+// Mouse interaction — use global mx/my from cursor system (tracked on document)
+
+// Slow auto-rotation + mouse-driven tilt
+function updateRotation(){
+  targetRotY+=.003;
+  const mxn=(mx/W-.5)*2;
+  const myn=(my/H-.5)*2;
+  targetRotX=.3-myn*.25;
+  rotY+=(targetRotY-rotY)*.02;
+  rotX+=(targetRotX-rotX)*.04;
+}
+
+function project(x,y,z){
+  const s=PERSPECTIVE/(PERSPECTIVE+z);
+  return{sx:x*s+W*.5,sy:y*s+H*.5,s,z};
+}
+
+function rotatePoint(px,py,pz){
+  // Rotate around Y
+  let x=px*Math.cos(rotY)-pz*Math.sin(rotY);
+  let z=px*Math.sin(rotY)+pz*Math.cos(rotY);
+  // Rotate around X
+  let y=py*Math.cos(rotX)-z*Math.sin(rotX);
+  z=py*Math.sin(rotX)+z*Math.cos(rotX);
+  return{x,y,z};
+}
+
+function animCv(){
+  ctx.clearRect(0,0,W,H);
+  updateRotation();
+
+  const rad=SPHERE_RADIUS*(W>768?1:.7);
+  const projected=[];
+
+  for(let i=0;i<spherePts.length;i++){
+    const p=spherePts[i];
+    // Smooth displacement decay
+    p.dx*=.92;p.dy*=.92;p.dz*=.92;
+
+    const wx=p.ox*rad+p.dx;
+    const wy=p.oy*rad+p.dy;
+    const wz=p.oz*rad+p.dz;
+    const r=rotatePoint(wx,wy,wz);
+    const pr=project(r.x,r.y,r.z);
+
+    // Mouse repulsion in screen space
+    const dmx=pr.sx-mx,dmy=pr.sy-my;
+    const dist=Math.sqrt(dmx*dmx+dmy*dmy);
+    const repulseR=140;
+    if(dist<repulseR&&dist>1){
+      const force=(1-dist/repulseR)*35;
+      const nx=dmx/dist,ny=dmy/dist;
+      p.dx+=nx*force*.15;
+      p.dy+=ny*force*.15;
+    }
+
+    projected.push({sx:pr.sx,sy:pr.sy,s:pr.s,z:r.z,idx:i});
+  }
+
+  // Sort by z for depth ordering (back to front)
+  projected.sort((a,b)=>a.z-b.z);
+
+  for(const p of projected){
+    const depthN=(p.z+rad)/(2*rad); // 0=back, 1=front
+    const dotR=Math.max(.5,1.8*depthN*p.s);
+    const alpha=.12+depthN*.65;
+
+    const isLight=document.body.classList.contains('theme-light');
+
+    // Color: mix cream and accent based on depth
+    const isAccent=depthN>.7&&p.idx%7===0;
+    if(isAccent){
+      ctx.fillStyle=isLight?`rgba(114,10,10,${alpha})`:`rgba(200,168,107,${alpha*.9})`;
+    } else {
+      ctx.fillStyle=isLight?`rgba(38,6,10,${alpha})`:`rgba(240,235,224,${alpha})`;
+    }
+    ctx.beginPath();
+    ctx.arc(p.sx,p.sy,dotR,0,Math.PI*2);
+    ctx.fill();
+  }
+
+  requestAnimationFrame(animCv);
+}
+animCv();
+
+// ═══════ LOADER ═══════
+const loadMsgs=['INITIALISING SUBSET CONSTRUCTION...','LOADING TRANSITION FUNCTIONS...','COMPILING ε-CLOSURE ALGORITHM...','BUILDING POWERSET ENGINE...','MAPPING STATE SPACE...','SYSTEM READY.'];
+let li=0,lp=0;const lBar=document.getElementById('load-bar'),lPct=document.getElementById('load-pct'),lSt=document.getElementById('load-status');
+setTimeout(()=>{lBar.style.width='100%'},200);
+const lpi=setInterval(()=>{lp+=Math.random()*8+2;lp=Math.min(lp,100);lPct.textContent=Math.floor(lp)+'%';if(lp>=100)clearInterval(lpi)},50);
+const lsi=setInterval(()=>{li++;if(li<loadMsgs.length)lSt.textContent=loadMsgs[li];else clearInterval(lsi)},350);
+setTimeout(()=>{const ld=document.getElementById('loader');ld.style.opacity='0';ld.style.pointerEvents='none';setTimeout(()=>ld.style.display='none',950)},2800);
+
+// ═══════ CLOCK ═══════
+function tick(){const d=new Date();document.getElementById('hero-clock').textContent=d.toTimeString().slice(0,8)}
+tick();setInterval(tick,1000);
+
+// ═══════ SCROLL DRIVER (rAF throttled) ═══════
+const progBar=document.getElementById('progress');
+let scrollTicking=false;
+window.addEventListener('scroll',()=>{if(!scrollTicking){requestAnimationFrame(()=>{
+  const y=window.scrollY,max=document.documentElement.scrollHeight-window.innerHeight;
+  progBar.style.width=(y/max*100)+'%';
+  document.getElementById('nav').classList.toggle('scrolled',y>60);
+  updateHeroParallax(y);updateReel();
+  scrollTicking=false});scrollTicking=true}},{passive:true});
+
+// ═══════ HERO PARALLAX ═══════
+function updateHeroParallax(y){
+  const sym=document.getElementById('heroSym');
+  sym.style.transform=`translate(-50%,calc(-50% + ${y*.25}px)) scale(${1+y*.0004}) rotate(${y*.015}deg)`;
+  sym.style.opacity=Math.max(0,1-y/600);
+  const t=document.getElementById('hero-title');if(t)t.style.transform=`translateY(${y*.2}px)`;
+}
+
+// ═══════ ANIMATED COUNTERS ═══════
+let countersAnimated=false;
+function animCounters(){if(countersAnimated)return;countersAnimated=true;
+  document.querySelectorAll('.hm-num').forEach(el=>{const target=parseInt(el.dataset.count);let cur=0;const step=Math.max(1,Math.floor(target/40));
+    const iv=setInterval(()=>{cur+=step;if(cur>=target){cur=target;clearInterval(iv)}el.textContent=cur},30)})}
+const counterObs=new IntersectionObserver(e=>{e.forEach(en=>{if(en.isIntersecting)animCounters()})},{threshold:.5});
+const heroMeta=document.querySelector('.hero-meta');if(heroMeta)counterObs.observe(heroMeta);
+
+// ═══════ THEORY PIN-SCROLL REEL ═══════
+const reel=document.getElementById('theory-reel');
+const reelPanels=document.querySelectorAll('.reel-panel');
+const reelSyms=document.querySelectorAll('.reel-sym');
+const reelDots=document.querySelectorAll('.rp-dot');
+const NUM_PANELS=6;
+let lastPanelIdx=-1;
+function updateReel(){
+  const top=reel.getBoundingClientRect().top;const h=reel.offsetHeight-window.innerHeight;
+  const prog=Math.max(0,Math.min(1,-top/h));
+  const idx=Math.min(Math.floor(prog*NUM_PANELS),NUM_PANELS-1);
+  if(idx!==lastPanelIdx){
+    reelPanels.forEach((p,i)=>{p.classList.toggle('active',i===idx);if(i===idx)p.style.transitionDelay='.05s';else p.style.transitionDelay='0s'});
+    reelSyms.forEach((s,i)=>{s.classList.remove('reveal','exit');if(i===idx)setTimeout(()=>s.classList.add('reveal'),60);else if(i<idx)s.classList.add('exit')});
+    reelDots.forEach((d,i)=>d.classList.toggle('active',i===idx));
+    lastPanelIdx=idx;
+  }
+}
+
+// ═══════ WORLDQUANT-STYLE TEXT HOVER ═══════
+const wqList=document.getElementById('wq-list');
+const wqItems=document.querySelectorAll('.wq-item');
+wqItems.forEach(item=>{
+  item.addEventListener('mouseenter',()=>{wqList.classList.add('has-hover');wqItems.forEach(i=>i.classList.remove('active'));item.classList.add('active')});
+});
+wqList.addEventListener('mouseleave',()=>{wqList.classList.remove('has-hover');wqItems.forEach(i=>i.classList.remove('active'))});
+
+// ═══════ NFA / DFA ENGINE ═══════
+let NFA=null,DFA=null,MINDFA=null,dfaSteps=[];
+let testPath=[],stepIdx=0;
+
+const PRESETS=[
+  {states:['A','B','C'],alpha:['a','b'],start:'A',accept:['C'],delta:{A:{a:['A','B'],b:['C']},B:{a:['A'],b:['B']},C:{a:[],b:['A','B']}}},
+  {states:['q0','q1','q2'],alpha:['a','b'],start:'q0',accept:['q2'],delta:{q0:{a:['q0','q1'],b:['q0']},q1:{a:[],b:['q2']},q2:{a:[],b:[]}}},
+  {states:['q0','q1','q2'],alpha:['a','b'],start:'q0',accept:['q2'],delta:{q0:{a:['q0','q1'],b:['q0']},q1:{a:['q2'],b:[]},q2:{a:['q2'],b:['q2']}}},
+  {states:['q0','q1','q2'],alpha:['a','b','ε'],start:'q0',accept:['q2'],delta:{q0:{a:['q1'],b:[],ε:['q1']},q1:{a:[],b:['q2'],ε:[]},q2:{a:[],b:[],ε:[]}}},
+  {states:['q0','q1'],alpha:['a','b'],start:'q0',accept:['q0'],delta:{q0:{a:['q1'],b:['q0']},q1:{a:['q0'],b:['q1']}}},
+  {states:['q0','q1','q2','q3'],alpha:['a','b'],start:'q0',accept:['q3'],delta:{q0:{a:['q1'],b:[]},q1:{a:['q1'],b:['q1','q2']},q2:{a:[],b:['q3']},q3:{a:['q3'],b:['q3']}}}
+];
+
+function loadPreset(i){const p=PRESETS[i];
+  document.getElementById('inp-states').value=p.states.join(', ');
+  document.getElementById('inp-alpha').value=p.alpha.join(', ');
+  document.getElementById('inp-accept').value=p.accept.join(', ');
+  buildTransitionTable();
+  setTimeout(()=>{p.states.forEach(s=>p.alpha.forEach(sym=>{const el=document.getElementById(`cell-${s}-${sym}`);if(el)el.value=(p.delta[s][sym]||[]).join(',')||'∅'}));document.getElementById('inp-start').value=p.start},60);
+}
+
+function getStates(){return document.getElementById('inp-states').value.split(',').map(s=>s.trim()).filter(Boolean)}
+function getAlpha(){return document.getElementById('inp-alpha').value.split(',').map(s=>s.trim()).filter(Boolean)}
+
+function buildTransitionTable(){
+  const states=getStates(),alpha=getAlpha();
+  const sel=document.getElementById('inp-start');const prev=sel.value;
+  sel.innerHTML=states.map(s=>`<option>${s}</option>`).join('');
+  if(states.includes(prev))sel.value=prev;
+  if(!states.length||!alpha.length){document.getElementById('trans-table-container').innerHTML='<div class="alert err">Enter states and alphabet first</div>';return}
+  let h=`<table class="trans-table"><thead><tr><th>δ</th>${alpha.map(a=>`<th>${a}</th>`).join('')}</tr></thead><tbody>`;
+  states.forEach(s=>{h+=`<tr><td class="state-cell">${s}</td>`+alpha.map(sym=>`<td><input id="cell-${s}-${sym}" placeholder="∅" autocomplete="off"></td>`).join('')+'</tr>'});
+  document.getElementById('trans-table-container').innerHTML=h+'</tbody></table>';
+}
+
+function readNFA(){
+  const states=getStates(),alpha=getAlpha(),start=document.getElementById('inp-start').value;
+  const accept=document.getElementById('inp-accept').value.split(',').map(s=>s.trim()).filter(Boolean);
+  const delta={};
+  states.forEach(s=>{delta[s]={};alpha.forEach(sym=>{const v=(document.getElementById(`cell-${s}-${sym}`)||{value:''}).value.trim();delta[s][sym]=(!v||v==='∅')?[]:v.split(',').map(x=>x.trim()).filter(Boolean)})});
+  return{states,alpha,start,accept,delta};
+}
+
+function epsClosure(nfa,set){
+  if(!nfa.alpha.includes('ε'))return[...set];
+  const stk=[...set],vis=new Set(set);
+  while(stk.length){const s=stk.pop();(nfa.delta[s]&&nfa.delta[s]['ε']||[]).forEach(t=>{if(!vis.has(t)){vis.add(t);stk.push(t)}})}
+  return[...vis].sort();
+}
+function setName(a){return(!a||!a.length)?'∅':'{'+a.join(',')+'}'}
+
+function subsetConstruct(nfa){
+  const wa=nfa.alpha.filter(a=>a!=='ε');
+  const s0=epsClosure(nfa,[nfa.start]),n0=setName(s0);
+  const Q=[s0],vis=new Set([n0]),ds={},stps=[];
+  while(Q.length){
+    const cur=Q.shift(),cn=setName(cur);
+    ds[cn]={subset:cur,accept:cur.some(s=>nfa.accept.includes(s)),tr:{}};
+    const st={};
+    wa.forEach(sym=>{let mv=[];cur.forEach(s=>{mv=mv.concat(nfa.delta[s]&&nfa.delta[s][sym]||[])});
+      mv=[...new Set(mv)].sort();const cl=epsClosure(nfa,mv),tn=setName(cl);
+      ds[cn].tr[sym]=tn;st[sym]=tn;
+      if(!vis.has(tn)){vis.add(tn);if(cl.length)Q.push(cl)}});
+    stps.push({proc:cn,sub:cur,tr:{...st}});
+  }
+  const hasDead=Object.values(ds).some(d=>Object.values(d.tr).includes('∅'));
+  if(hasDead){ds['∅']={subset:[],accept:false,tr:{}};wa.forEach(sym=>ds['∅'].tr[sym]='∅')}
+  const sl=Object.keys(ds);
+  return{states:sl,alpha:wa,start:n0,accept:sl.filter(s=>ds[s].accept),delta:Object.fromEntries(sl.map(s=>[s,ds[s].tr])),subMap:Object.fromEntries(sl.map(s=>[s,ds[s].subset])),steps:stps};
+}
+
+// ═══════ DFA MINIMIZATION (Partition Refinement) ═══════
+function minimizeDFA(dfa){
+  const acc=new Set(dfa.accept),nonAcc=dfa.states.filter(s=>!acc.has(s));
+  if(!nonAcc.length&&acc.size<=1)return{...dfa,partitions:[[...acc]],mergedPairs:[]};
+  let P=[dfa.accept.filter(s=>dfa.states.includes(s)),nonAcc];
+  P=P.filter(g=>g.length);
+  let changed=true;
+  while(changed){changed=false;const newP=[];
+    P.forEach(group=>{if(group.length<=1){newP.push(group);return}
+      const splits={};
+      group.forEach(s=>{const sig=dfa.alpha.map(a=>{const t=dfa.delta[s]&&dfa.delta[s][a]||'∅';return P.findIndex(g=>g.includes(t))}).join(',');
+        if(!splits[sig])splits[sig]=[];splits[sig].push(s)});
+      const parts=Object.values(splits);
+      if(parts.length>1)changed=true;
+      parts.forEach(p=>newP.push(p))});
+    P=newP}
+  const stateMap={};P.forEach(g=>{const rep=g.sort()[0];g.forEach(s=>stateMap[s]=rep)});
+  const mStates=[...new Set(Object.values(stateMap))];
+  const mDelta={};mStates.forEach(s=>{mDelta[s]={};dfa.alpha.forEach(a=>{const t=dfa.delta[s]&&dfa.delta[s][a]||'∅';mDelta[s][a]=stateMap[t]||'∅'})});
+  const mergedPairs=[];P.filter(g=>g.length>1).forEach(g=>{for(let i=1;i<g.length;i++)mergedPairs.push([g[0],g[i]])});
+  return{states:mStates,alpha:dfa.alpha,start:stateMap[dfa.start],accept:mStates.filter(s=>acc.has(s)),delta:mDelta,subMap:Object.fromEntries(mStates.map(s=>[s,dfa.subMap&&dfa.subMap[s]||[s]])),partitions:P,mergedPairs,stateMap};
+}
+
+// ═══════ GRAPH RENDERING ═══════
+function layoutStates(states,cx,cy,r,start=null,accept=[]){
+  const parseSubset=id=>{
+    if(id==='∅')return[];
+    if(id.startsWith('{')&&id.endsWith('}'))return id.slice(1,-1).split(',').map(x=>x.trim()).filter(Boolean);
+    return[id];
+  };
+
+  if(states.includes('∅')&&states.length>=4){
+    const dead='∅';
+    const pos={};
+    const nonDead=states.filter(s=>s!==dead);
+    const startState=states.includes(start)?start:nonDead[0];
+    const singleton=nonDead.filter(s=>parseSubset(s).length===1&&s!==startState);
+    const pair=nonDead.filter(s=>parseSubset(s).length===2);
+
+    const leftTop=singleton.find(s=>accept.includes(s))||singleton[0]||null;
+    const rightMid=pair.find(s=>!accept.includes(s))||pair[0]||null;
+    const rightBottom=pair.find(s=>accept.includes(s)&&s!==rightMid)||pair.find(s=>s!==rightMid)||null;
+
+    if(leftTop)pos[leftTop]={x:cx-r*.95,y:cy-r*.55};
+    if(startState)pos[startState]={x:cx-r*.95,y:cy+r*.35};
+    if(rightMid)pos[rightMid]={x:cx+r*.55,y:cy+r*.15};
+    if(rightBottom)pos[rightBottom]={x:cx+r*.55,y:cy+r*.85};
+    pos[dead]={x:cx+r*.55,y:cy-r*.55};
+
+    const used=new Set(Object.keys(pos));
+    const fallback=states.filter(s=>!used.has(s));
+    fallback.forEach((s,i)=>{
+      pos[s]={x:cx+r*Math.cos(i/fallback.length*2*Math.PI-Math.PI/2),y:cy+r*Math.sin(i/fallback.length*2*Math.PI-Math.PI/2)};
+    });
+
+    return states.map(s=>({id:s,x:pos[s].x,y:pos[s].y}));
+  }
+
+  if(states.length===1)return[{x:cx,y:cy,id:states[0]}];
+  if(states.length===2)return[{x:cx-r*.6,y:cy,id:states[0]},{x:cx+r*.6,y:cy,id:states[1]}];
+  return states.map((s,i)=>({x:cx+r*Math.cos(i/states.length*2*Math.PI-Math.PI/2),y:cy+r*Math.sin(i/states.length*2*Math.PI-Math.PI/2),id:s}));
+}
+
+function renderGraph(svgId,states,alpha,start,accept,delta,hl){
+  const svg=document.getElementById(svgId);if(!svg)return;
+  const W=720,H=400;svg.setAttribute('viewBox',`0 0 ${W} ${H}`);
+  const pos={};layoutStates(states,W/2,H/2,Math.min(W,H)*.32,start,accept).forEach(p=>{pos[p.id]={x:p.x,y:p.y}});
+  const NODE_R=24;
+  const edges={};
+  states.forEach(s=>alpha.forEach(sym=>{const ts=Array.isArray(delta[s]&&delta[s][sym])?delta[s][sym]:[delta[s]&&delta[s][sym]];
+    ts.forEach(t=>{if(t!==undefined&&t!==null&&t!==''){const k=s+'|'+t;if(!edges[k])edges[k]={from:s,to:t,syms:[]};if(!edges[k].syms.includes(sym))edges[k].syms.push(sym)}})}));
+
+  const lineEndpoints=(from,to,pad=0)=>{
+    const dx=to.x-from.x,dy=to.y-from.y,len=Math.sqrt(dx*dx+dy*dy)||1;
+    const ux=dx/len,uy=dy/len;
+    return{
+      sx:from.x+ux*(NODE_R-1),
+      sy:from.y+uy*(NODE_R-1),
+      ex:to.x-ux*(NODE_R+10+pad),
+      ey:to.y-uy*(NODE_R+10+pad),
+      nx:-uy,
+      ny:ux
+    };
+  };
+
+  const arrowHead=(x,y,dx,dy,color,size=12)=>{
+    const len=Math.sqrt(dx*dx+dy*dy)||1;
+    const ux=dx/len,uy=dy/len;
+    const px=-uy,py=ux;
+    const bx=x-ux*size,by=y-uy*size;
+    const wx=px*size*.55,wy=py*size*.55;
+    return`<path d="M${x} ${y} L${bx+wx} ${by+wy} L${bx-wx} ${by-wy} Z" fill="${color}" stroke="rgba(10,9,6,.85)" stroke-width="1.1"/>`;
+  };
+
+  const displayState=s=>{
+    if(s==='∅')return'D';
+    if(s.startsWith('{')&&s.endsWith('}')){
+      const parts=s.slice(1,-1).split(',').map(x=>x.trim()).filter(Boolean);
+      const mapped=parts.map(p=>p==='q0'?'A':p==='q1'?'B':p==='q2'?'C':p);
+      return mapped.join('');
+    }
+    return s;
+  };
+
+  const labelStyle="paint-order:stroke;stroke:rgba(10,9,6,.9);stroke-width:3px;stroke-linejoin:round";
+  let edgeLayer='',labelLayer='',nodeLayer='',arrowLayer='';
+
+  Object.values(edges).forEach(e=>{
+    const f=pos[e.from],t=pos[e.to];if(!f||!t)return;
+    const isHL=hl&&((hl.from===e.from&&hl.to===e.to)||(hl.edge&&hl.edge.from===e.from&&hl.edge.to===e.to));
+    const isDeadEdge=e.from==='∅'||e.to==='∅';
+
+    // Incoming edges to dead state are rendered once in the dedicated overlay pass below.
+    if(e.to==='∅'&&e.from!=='∅')return;
+
+    const col=isDeadEdge?'#ff5d52':(isHL?'#f2cc78':'#9a8a70');
+    const txtCol=isDeadEdge?'#ff9a92':(isHL?'#f2cc78':'#b7a586');
+    const strokeW=isHL?3:(isDeadEdge?3.2:2.4);
+
+    if(e.from===e.to){
+      const lx=f.x,ly=f.y-NODE_R;
+      const sx=lx-NODE_R*.7,sy=ly+4;
+      const c1x=lx-NODE_R*2,c1y=ly-NODE_R*2.5;
+      const c2x=lx+NODE_R*2,c2y=ly-NODE_R*2.5;
+      const ex=lx+NODE_R*.7,ey=ly+4;
+      edgeLayer+=`<path d="M${sx} ${sy} C${c1x} ${c1y} ${c2x} ${c2y} ${ex} ${ey}" fill="none" stroke="${col}" stroke-width="${strokeW}"/>`;
+      arrowLayer+=arrowHead(ex,ey,ex-c2x,ey-c2y,col,isDeadEdge?14:12);
+      labelLayer+=`<text x="${lx}" y="${ly-NODE_R*2.3}" text-anchor="middle" fill="${txtCol}" font-size="10" font-family="'Space Mono',monospace" font-weight="700" style="${labelStyle}">${e.syms.join(',')}</text>`;
+      return;
+    }
+
+    const hasRev=Boolean(edges[e.to+'|'+e.from]);
+    const p=lineEndpoints(f,t,hasRev?2:0);
+    if(hasRev){
+      const curve=34*(e.from<e.to?1:-1);
+      const cpx=(p.sx+p.ex)/2+p.nx*curve,cpy=(p.sy+p.ey)/2+p.ny*curve;
+      const lx=(p.sx+2*cpx+p.ex)/4+p.nx*8,ly=(p.sy+2*cpy+p.ey)/4+p.ny*8-2;
+      edgeLayer+=`<path d="M${p.sx} ${p.sy} Q${cpx} ${cpy} ${p.ex} ${p.ey}" fill="none" stroke="${col}" stroke-width="${strokeW}"/>`;
+      arrowLayer+=arrowHead(p.ex,p.ey,p.ex-cpx,p.ey-cpy,col,isDeadEdge?14:12);
+      labelLayer+=`<text x="${lx}" y="${ly}" text-anchor="middle" fill="${txtCol}" font-size="10" font-family="'Space Mono',monospace" font-weight="700" style="${labelStyle}">${e.syms.join(',')}</text>`;
+    }else if(isDeadEdge){
+      const mx=(p.sx+p.ex)/2,my=(p.sy+p.ey)/2;
+      const vx=mx-W/2,vy=my-H/2,vlen=Math.sqrt(vx*vx+vy*vy)||1;
+      const cpx=mx+(vx/vlen)*82,cpy=my+(vy/vlen)*82;
+      const lx=(p.sx+2*cpx+p.ex)/4,ly=(p.sy+2*cpy+p.ey)/4-2;
+      edgeLayer+=`<path d="M${p.sx} ${p.sy} Q${cpx} ${cpy} ${p.ex} ${p.ey}" fill="none" stroke="${col}" stroke-width="${strokeW}"/>`;
+      arrowLayer+=arrowHead(p.ex,p.ey,p.ex-cpx,p.ey-cpy,col,14);
+      labelLayer+=`<text x="${lx}" y="${ly}" text-anchor="middle" fill="${txtCol}" font-size="10" font-family="'Space Mono',monospace" font-weight="700" style="${labelStyle}">${e.syms.join(',')}</text>`;
+    }else{
+      const lx=(p.sx+p.ex)/2+p.nx*12,ly=(p.sy+p.ey)/2+p.ny*12-2;
+      edgeLayer+=`<line x1="${p.sx}" y1="${p.sy}" x2="${p.ex}" y2="${p.ey}" stroke="${col}" stroke-width="${strokeW}"/>`;
+      arrowLayer+=arrowHead(p.ex,p.ey,p.ex-p.sx,p.ey-p.sy,col,12);
+      labelLayer+=`<text x="${lx}" y="${ly}" text-anchor="middle" fill="${txtCol}" font-size="10" font-family="'Space Mono',monospace" font-weight="700" style="${labelStyle}">${e.syms.join(',')}</text>`;
+    }
+  });
+
+  if(states.includes('∅')){
+    const deadIncoming=Object.values(edges).filter(e=>e.to==='∅'&&e.from!=='∅');
+    deadIncoming.forEach((e,idx)=>{
+      const f=pos[e.from],t=pos['∅'];if(!f||!t)return;
+      const p=lineEndpoints(f,t,6+idx*2);
+      const mx=(p.sx+p.ex)/2,my=(p.sy+p.ey)/2;
+      const cpx=mx+(idx%2===0?-1:1)*88,cpy=my-34;
+      const lx=(p.sx+2*cpx+p.ex)/4,ly=(p.sy+2*cpy+p.ey)/4-8;
+      edgeLayer+=`<path d="M${p.sx} ${p.sy} Q${cpx} ${cpy} ${p.ex} ${p.ey}" fill="none" stroke="#ff5d52" stroke-width="3.4"/>`;
+      arrowLayer+=arrowHead(p.ex,p.ey,p.ex-cpx,p.ey-cpy,'#ff5d52',14);
+      labelLayer+=`<text x="${lx}" y="${ly}" text-anchor="middle" fill="#ff9a92" font-size="10" font-family="'Space Mono',monospace" font-weight="700" style="${labelStyle}">${e.syms.join(',')}</text>`;
+    });
+  }
+
+  if(pos[start]){
+    const p=pos[start],sx=p.x-56,sy=p.y,ex=p.x-(NODE_R+2),ey=p.y;
+    edgeLayer+=`<line x1="${sx}" y1="${sy}" x2="${ex}" y2="${ey}" stroke="#5bc8af" stroke-width="1.8"/>`;
+    arrowLayer+=arrowHead(ex,ey,ex-sx,ey-sy,'#5bc8af',12);
+  }
+
+  states.forEach(s=>{const p=pos[s];if(!p)return;
+    const isAcc=accept.includes(s),isCur=hl&&hl.state===s,isDead=s==='∅',isStart=s===start;
+    const rg=isDead?'#c84b3c':isCur?'#c8a86b':isAcc?'#c8a86b':isStart?'#5bc8af':'#3a3528';
+    const fl=isDead?'rgba(200,75,60,.1)':isCur?'rgba(200,168,107,.12)':'rgba(240,235,224,.03)';
+    const display=displayState(s);
+    const label=display.length>9?display.slice(0,8)+'…':display;
+    nodeLayer+=`<g><circle cx="${p.x}" cy="${p.y}" r="${NODE_R}" fill="${fl}" stroke="${rg}" stroke-width="${isCur?2.5:1.5}"/>`;
+    if(isAcc)nodeLayer+=`<circle cx="${p.x}" cy="${p.y}" r="${NODE_R-5}" fill="none" stroke="${rg}" stroke-width="1" opacity=".5"/>`;
+    nodeLayer+=`<text x="${p.x}" y="${p.y}" text-anchor="middle" dominant-baseline="central" fill="${isCur?'#c8a86b':isDead?'#c84b3c':'#f0ebe0'}" font-size="${s.length>8?8:10}" font-family="'Space Mono',monospace" font-weight="700">${label}</text></g>`;
+  });
+
+  svg.innerHTML=edgeLayer+nodeLayer+arrowLayer+labelLayer;
+}
+
+function renderNFA(){if(!NFA)return;const d={};NFA.states.forEach(s=>{d[s]={};NFA.alpha.forEach(a=>{d[s][a]=NFA.delta[s][a]||[]})});renderGraph('svg-nfa',NFA.states,NFA.alpha,NFA.start,NFA.accept,d,null)}
+function renderDFA(hl){if(!DFA)return;const d={};DFA.states.forEach(s=>{d[s]={};DFA.alpha.forEach(a=>{d[s][a]=[DFA.delta[s][a]]})});renderGraph('svg-dfa',DFA.states,DFA.alpha,DFA.start,DFA.accept,d,hl)}
+
+// ═══════ CONVERSION ═══════
+function runConversion(){
+  NFA=readNFA();if(!NFA.states.length){alert('Define at least one state.');return}
+  DFA=subsetConstruct(NFA);dfaSteps=DFA.steps;MINDFA=null;
+  document.getElementById('nfa-alert').innerHTML=`NFA: <span class="badge badge-info">${NFA.states.length} states</span> Alphabet: {${NFA.alpha.join(', ')}}`;
+  document.getElementById('dfa-alert').innerHTML=`DFA: <span class="badge badge-info">${DFA.states.length} states</span> Accept: <span class="badge badge-ok">${DFA.accept.join(', ')||'none'}</span>`;
+  document.getElementById('export-row').style.display='flex';
+  renderNFA();renderDFA();renderSteps();renderTable();renderEClosure();resetTest();
+  document.getElementById('minimize-out').innerHTML='<div style="margin-bottom:12px"><button class="btn btn-primary btn-sm" onclick="runMinimize()">MINIMIZE DFA</button></div><div class="empty">Click to minimize the DFA using partition refinement</div>';
+  document.getElementById('min-graph-wrap').style.display='none';
+}
+
+function resetAll(){NFA=null;DFA=null;MINDFA=null;dfaSteps=[];testPath=[];stepIdx=0;
+  ['svg-nfa','svg-dfa','svg-test','svg-min'].forEach(id=>{const s=document.getElementById(id);if(s)s.innerHTML=''});
+  document.getElementById('steps-out').innerHTML='<div class="empty">RUN CONVERSION TO SEE STEPS</div>';
+  document.getElementById('table-out').innerHTML='<div class="empty">DFA TABLE WILL APPEAR HERE</div>';
+  document.getElementById('test-out').innerHTML='';
+  document.getElementById('eclosure-out').innerHTML='<div class="empty">CONVERT AN NFA WITH ε-TRANSITIONS TO SEE ε-CLOSURE</div>';
+  document.getElementById('minimize-out').innerHTML='<div class="empty">CONVERT FIRST, THEN MINIMIZE THE DFA</div>';
+  document.getElementById('min-graph-wrap').style.display='none';
+  document.getElementById('export-row').style.display='none';
+  document.getElementById('nfa-alert').textContent='Load a preset or define your NFA and click CONVERT';
+  document.getElementById('dfa-alert').textContent='DFA will appear after conversion';
+}
+
+function renderSteps(){if(!dfaSteps.length)return;let h='';
+  dfaSteps.forEach((step,i)=>{
+    h+=`<div class="step-card"><div class="step-num">STEP ${String(i+1).padStart(2,'0')}</div>
+    <div style="font-family:var(--mono);font-size:11px;color:rgba(240,235,224,0.5);margin-bottom:10px">Processing <span style="color:var(--accent)">${step.proc}</span> = {${step.sub.join(', ')||'∅'}}</div>
+    <table style="width:100%;border-collapse:collapse;font-size:11px;font-family:var(--mono)">
+    <tr><th style="text-align:left;padding:5px 8px;color:rgba(240,235,224,0.3);border:1px solid rgba(240,235,224,0.06)">SYM</th><th style="text-align:left;padding:5px 8px;color:rgba(240,235,224,0.3);border:1px solid rgba(240,235,224,0.06)">→ DFA STATE</th><th style="padding:5px 8px;color:rgba(240,235,224,0.3);border:1px solid rgba(240,235,224,0.06)">NEW?</th></tr>`;
+    DFA.alpha.forEach(sym=>{const tgt=step.tr[sym];const isNew=i>0&&!dfaSteps.slice(0,i).some(s=>s.proc===tgt)&&tgt!=='∅';
+      h+=`<tr><td style="padding:5px 8px;border:1px solid rgba(240,235,224,0.06);color:var(--accent)">${sym}</td><td style="padding:5px 8px;border:1px solid rgba(240,235,224,0.06)">${tgt}</td><td style="padding:5px 8px;border:1px solid rgba(240,235,224,0.06);text-align:center">${isNew?'<span style="color:#5bc8af;font-weight:700">✓</span>':'—'}</td></tr>`});
+    h+='</table></div>'});
+  document.getElementById('steps-out').innerHTML=h;
+}
+
+function renderTable(){if(!DFA)return;
+  let h=`<table class="dfa-tbl"><thead><tr><th></th><th>DFA STATE</th><th>NFA SUBSET</th>${DFA.alpha.map(a=>`<th>${a}</th>`).join('')}</tr></thead><tbody>`;
+  DFA.states.forEach(s=>{const isS=s===DFA.start,isA=DFA.accept.includes(s);
+    h+=`<tr><td style="text-align:center">${isS?'→':''}${isA?'*':''}</td><td class="acc">${s}</td><td style="color:rgba(240,235,224,0.3);font-size:10px">{${(DFA.subMap[s]||[]).join(',')||'∅'}}</td>`;
+    DFA.alpha.forEach(sym=>{const t=DFA.delta[s]&&DFA.delta[s][sym]||'∅';h+=`<td class="${t==='∅'?'dead':''}">${t}</td>`});h+='</tr>'});
+  h+='</tbody></table><div style="margin-top:10px;font-family:var(--mono);font-size:10px;color:rgba(240,235,224,0.25)">→ START &nbsp;|&nbsp; * ACCEPT &nbsp;|&nbsp; RED = DEAD STATE</div>';
+  document.getElementById('table-out').innerHTML=h;
+}
+
+// ═══════ ε-CLOSURE VISUALIZATION ═══════
+function renderEClosure(){if(!NFA)return;
+  if(!NFA.alpha.includes('ε')){document.getElementById('eclosure-out').innerHTML='<div class="alert">This NFA has no ε-transitions. ε-closure of each state is just the state itself.</div>';return}
+  let h='<div style="font-family:var(--mono);font-size:11px;color:rgba(240,235,224,.5);margin-bottom:16px">ε-CLOSURE COMPUTATION FOR EACH STATE:</div>';
+  NFA.states.forEach(s=>{
+    const cl=epsClosure(NFA,[s]);
+    const epsTargets=NFA.delta[s]&&NFA.delta[s]['ε']||[];
+    h+=`<div class="step-card"><div class="step-num">ε-CLOSURE(${s})</div>
+    <div style="font-family:var(--mono);font-size:11px;margin-bottom:8px">Direct ε-transitions: ${epsTargets.length?epsTargets.map(t=>`<span style="color:var(--accent)">${t}</span>`).join(', '):'<span style="color:rgba(240,235,224,.3)">none</span>'}</div>
+    <div style="font-family:var(--mono);font-size:12px">Result: <span style="color:var(--teal);font-weight:700">{${cl.join(', ')}}</span></div></div>`});
+  h+=`<div class="alert" style="margin-top:12px">The DFA start state is ε-closure({${NFA.start}}) = <strong style="color:var(--accent)">${setName(epsClosure(NFA,[NFA.start]))}</strong></div>`;
+  document.getElementById('eclosure-out').innerHTML=h;
+}
+
+// ═══════ DFA MINIMIZATION ═══════
+function runMinimize(){if(!DFA){alert('Convert first.');return}
+  MINDFA=minimizeDFA(DFA);
+  let h='<div style="font-family:var(--mono);font-size:11px;color:rgba(240,235,224,.5);margin-bottom:16px">PARTITION REFINEMENT RESULT:</div>';
+  if(MINDFA.mergedPairs.length===0){h+=`<div class="alert"><span class="badge badge-ok">OPTIMAL</span> DFA is already minimal — no equivalent states found.</div>`}
+  else{h+=`<div class="alert" style="border-color:var(--teal)"><span class="badge badge-ok">MINIMIZED</span> Reduced from <strong>${DFA.states.length}</strong> to <strong>${MINDFA.states.length}</strong> states</div>`;
+    h+='<div style="margin:12px 0"><div class="sec-label">MERGED EQUIVALENCE CLASSES</div>';
+    MINDFA.partitions.filter(g=>g.length>1).forEach(g=>{h+=`<div class="step-card"><div style="font-family:var(--mono);font-size:11px">States <span style="color:var(--accent)">${g.join(', ')}</span> are <span style="color:var(--teal)">equivalent</span> → merged into <strong style="color:var(--cream)">${g[0]}</strong></div></div>`});
+    h+='</div>';
+    h+=`<div class="sec-label" style="margin-top:16px">MINIMIZED DFA TABLE</div>`;
+    h+=`<table class="dfa-tbl"><thead><tr><th></th><th>STATE</th>${MINDFA.alpha.map(a=>`<th>${a}</th>`).join('')}</tr></thead><tbody>`;
+    MINDFA.states.forEach(s=>{const isS=s===MINDFA.start,isA=MINDFA.accept.includes(s);
+      h+=`<tr><td style="text-align:center">${isS?'→':''}${isA?'*':''}</td><td class="acc">${s}</td>`;
+      MINDFA.alpha.forEach(sym=>{const t=MINDFA.delta[s]&&MINDFA.delta[s][sym]||'∅';h+=`<td class="${t==='∅'?'dead':''}">${t}</td>`});h+='</tr>'});
+    h+='</tbody></table>'}
+  document.getElementById('minimize-out').innerHTML=h;
+  if(MINDFA.states.length>0&&MINDFA.mergedPairs.length>0){
+    document.getElementById('min-graph-wrap').style.display='block';
+    const d={};MINDFA.states.forEach(s=>{d[s]={};MINDFA.alpha.forEach(a=>{d[s][a]=[MINDFA.delta[s][a]]})});
+    renderGraph('svg-min',MINDFA.states,MINDFA.alpha,MINDFA.start,MINDFA.accept,d,null)}
+}
+
+// ═══════ STRING TESTING ═══════
+function computeTestPath(str){if(!DFA)return null;
+  let cur=DFA.start;const path=[{state:cur,sym:null}];
+  for(let i=0;i<str.length;i++){const s=str[i];
+    if(!DFA.alpha.includes(s))return{path,accepted:false,error:`'${s}' not in alphabet {${DFA.alpha.join(',')}}`};
+    const nxt=DFA.delta[cur]&&DFA.delta[cur][s];
+    if(!nxt||nxt==='∅'){path.push({state:'∅',sym:s,from:cur});cur='∅';break}
+    path.push({state:nxt,sym:s,from:cur});cur=nxt}
+  return{path,accepted:DFA.accept.includes(cur),error:null};
+}
+
+function runTest(){if(!DFA){alert('Convert first.');return}
+  const str=document.getElementById('inp-test').value;
+  const res=computeTestPath(str);if(!res)return;testPath=res.path;stepIdx=testPath.length-1;
+  const acc=res.accepted;
+  let ph=`<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;font-family:var(--mono);font-size:11px">`;
+  testPath.forEach((p,i)=>{if(i>0)ph+=`<span style="color:rgba(240,235,224,.3)">—<span style="color:var(--accent)">${p.sym}</span>→</span>`;
+    ph+=`<span style="border:1px solid ${i===testPath.length-1?'rgba(200,168,107,.4)':'rgba(240,235,224,.1)'};padding:2px 8px;color:${i===testPath.length-1?'var(--accent)':'rgba(240,235,224,.6)'}">${p.state}</span>`});
+  ph+='</div>';
+  const last=testPath[testPath.length-1];
+  document.getElementById('test-out').innerHTML=`<div style="border:1px solid ${acc?'rgba(91,200,175,.3)':'rgba(200,75,60,.3)'};padding:20px;border-left:2px solid ${acc?'var(--teal)':'var(--red)'};margin-bottom:12px">
+    <div style="font-family:var(--display);font-size:36px;color:${acc?'var(--teal)':'var(--red)'};margin-bottom:8px">${acc?'ACCEPTED':'REJECTED'}</div>
+    <div style="font-family:var(--mono);font-size:11px;color:rgba(240,235,224,.4)">Input: <span style="color:var(--cream);font-size:14px;letter-spacing:3px">"${str}"</span> &nbsp;|&nbsp; Final: <span style="color:var(--accent)">${last.state}</span></div>
+    ${ph}${res.error?`<div style="margin-top:8px;color:var(--red);font-family:var(--mono);font-size:10px">${res.error}</div>`:''}</div>`;
+  const hlEdge=testPath.length>1?{from:testPath[testPath.length-2].state||last.from,to:last.state}:null;
+  const d={};DFA.states.forEach(s=>{d[s]={};DFA.alpha.forEach(a=>{d[s][a]=[DFA.delta[s][a]]})});
+  renderGraph('svg-test',DFA.states,DFA.alpha,DFA.start,DFA.accept,d,{state:last.state,edge:hlEdge});
+}
+
+function stepTest(){if(!DFA){alert('Convert first.');return}
+  const str=document.getElementById('inp-test').value;if(!str){alert('Enter a string.');return}
+  if(!testPath.length){const r=computeTestPath(str);if(!r)return;testPath=r.path;stepIdx=0}
+  if(stepIdx>=testPath.length){stepIdx=0;resetTest();return}
+  const step=testPath[stepIdx];
+  const hlEdge=stepIdx>0?{from:testPath[stepIdx-1].state,to:step.state}:null;
+  const d={};DFA.states.forEach(s=>{d[s]={};DFA.alpha.forEach(a=>{d[s][a]=[DFA.delta[s][a]]})});
+  renderGraph('svg-test',DFA.states,DFA.alpha,DFA.start,DFA.accept,d,{state:step.state,edge:hlEdge});
+  const isFinal=stepIdx===testPath.length-1;
+  document.getElementById('test-out').innerHTML=`<div style="border:1px solid rgba(200,168,107,.2);padding:14px;font-family:var(--mono);font-size:12px;border-left:2px solid var(--accent)">STEP ${stepIdx+1}/${testPath.length}: ${step.sym?`Read <span style="color:var(--accent)">'${step.sym}'</span> →`:``} State <span style="color:var(--accent)">${step.state}</span>${isFinal?` — <span style="color:${DFA.accept.includes(step.state)?'var(--teal)':'var(--red)'};font-weight:700">${DFA.accept.includes(step.state)?'ACCEPTED':'REJECTED'}</span>`:''}</div>`;
+  stepIdx++;
+}
+
+function resetTest(){testPath=[];stepIdx=0;document.getElementById('test-out').innerHTML='';if(DFA)renderDFA()}
+
+// ═══════ EXPORT ═══════
+function copyTable(){if(!DFA)return;
+  let t='DFA Transition Table\n';t+=`${''.padEnd(4)}${'State'.padEnd(20)}${'Subset'.padEnd(20)}${DFA.alpha.map(a=>a.padEnd(20)).join('')}\n`;
+  t+='─'.repeat(64+DFA.alpha.length*20)+'\n';
+  DFA.states.forEach(s=>{const isS=s===DFA.start,isA=DFA.accept.includes(s);
+    t+=`${(isS?'→':'')+(isA?'*':'')}\t${s}\t{${(DFA.subMap[s]||[]).join(',')||'∅'}}\t${DFA.alpha.map(a=>DFA.delta[s]&&DFA.delta[s][a]||'∅').join('\t')}\n`});
+  navigator.clipboard.writeText(t).then(()=>alert('Table copied to clipboard!')).catch(()=>alert('Copy failed'));
+}
+
+function exportSVG(id){const svg=document.getElementById(id);if(!svg||!svg.innerHTML)return;
+  const blob=new Blob([`<svg xmlns="http://www.w3.org/2000/svg" ${svg.getAttribute('viewBox')?'viewBox="'+svg.getAttribute('viewBox')+'"':''}>${svg.innerHTML}</svg>`],{type:'image/svg+xml'});
+  const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=id+'.svg';a.click();URL.revokeObjectURL(url);
+}
+
+// ═══════ TABS ═══════
+function showTab(id,el){
+  document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.app-tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById(id).classList.add('active');el.classList.add('active');
+}
+
+// ═══════ KEYBOARD SHORTCUTS ═══════
+document.addEventListener('keydown',e=>{
+  if(e.target.tagName==='INPUT'||e.target.tagName==='SELECT')return;
+  if(e.key==='Enter'||e.key==='r')runConversion();
+  if(e.key==='1')showTab('t-nfa',document.querySelectorAll('.app-tab')[0]);
+  if(e.key==='2')showTab('t-steps',document.querySelectorAll('.app-tab')[1]);
+  if(e.key==='3')showTab('t-dfa',document.querySelectorAll('.app-tab')[2]);
+  if(e.key==='4')showTab('t-table',document.querySelectorAll('.app-tab')[3]);
+  if(e.key==='5')showTab('t-test',document.querySelectorAll('.app-tab')[4]);
+  if(e.key==='6')showTab('t-eclosure',document.querySelectorAll('.app-tab')[5]);
+  if(e.key==='7')showTab('t-minimize',document.querySelectorAll('.app-tab')[6]);
+});
+
+// ═══════ THEME TOGGLE ═══════
+const themeToggle=document.getElementById('theme-toggle');
+const prefersLight=window.matchMedia('(prefers-color-scheme: light)');
+function applyTheme(mode){
+  document.body.classList.toggle('theme-light',mode==='light');
+  if(themeToggle)themeToggle.textContent=mode==='light'?'DARK':'LIGHT';
+}
+const savedTheme=localStorage.getItem('theme');
+if(savedTheme){
+  applyTheme(savedTheme);
+}else{
+  applyTheme(prefersLight.matches?'light':'dark');
+  prefersLight.addEventListener('change',e=>{if(!localStorage.getItem('theme'))applyTheme(e.matches?'light':'dark')});
+}
+if(themeToggle){
+  themeToggle.addEventListener('click',()=>{
+    const next=document.body.classList.contains('theme-light')?'dark':'light';
+    localStorage.setItem('theme',next);applyTheme(next);
+  });
+}
+
+// ═══════ BACKGROUND VIDEO ═══════
+const bgVideo=document.getElementById('bg-video');
+if(bgVideo){
+  bgVideo.muted=true;
+  bgVideo.defaultMuted=true;
+  const playBg=()=>bgVideo.play().catch(()=>{});
+  playBg();
+  document.addEventListener('visibilitychange',()=>{
+    if(document.hidden)bgVideo.pause();
+    else playBg();
+  });
+}
+
+// ═══════ INIT ═══════
+buildTransitionTable();loadPreset(0);setTimeout(()=>runConversion(),300);
+</script>
+</body>
+</html>
